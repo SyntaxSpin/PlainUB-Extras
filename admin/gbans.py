@@ -110,6 +110,15 @@ async def gban_user(bot: BOT, message: Message):
 
     reason = f"{reason}{proof_str}"
 
+    if message.replied and message.chat.type != ChatType.PRIVATE:
+        try:
+            if message.chat._raw.admin_rights:
+                await message.replied.reply(
+                    text=f"!dban {reason}", disable_preview=True, del_in=3, block=False
+                )
+        except UserNotParticipant:
+            pass
+
     gban_cmd: str = f"/gban <a href='tg://user?id={user_id}'>{user_id}</a> {reason}"
 
     await perform_gban_task(
