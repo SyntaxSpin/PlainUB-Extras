@@ -20,6 +20,7 @@ async def global_ban(bot: BOT, message: Message):
         .gbanp <reply to a proof> [reason]
     """
     progress: Message = await message.reply("❯")
+    
     extracted_info = await get_user_reason(message=message, progress=progress)
     if not extracted_info:
         return
@@ -59,8 +60,8 @@ async def un_global_ban(bot: BOT, message: Message):
         .ungban <user_id/reply> [reason]
     """
     progress: Message = await message.reply("❯")
+    
     extracted_info = await get_user_reason(message=message, progress=progress)
-
     if not extracted_info:
         return
 
@@ -149,7 +150,6 @@ async def perform_global_task(
             f"\n<b>Initiated in</b>: {message.chat.title or 'PM'}"
         )
 
-        # THIS IS THE CORRECTED LOGIC BLOCK
         if failed_count > 0:
             resp_str += f"\n<b>Failed</b> in: {failed_count}/{total_chats} groups."
         else:
