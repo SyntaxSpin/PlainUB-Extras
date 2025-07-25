@@ -21,7 +21,7 @@ async def add_gban_chat(bot: BOT, message: Message):
     """
     data = dict(name=message.input or message.chat.title, type=str(message.chat.type))
     await GBAN_DB.add_data({"_id": message.chat.id, **data})
-    text = f"#GBANS\n<b>{data['name']}</b>: <code>{message.chat.id}</code> added to the GBAN chat list."
+    text = f"#GBANS\n<b>{data['name']}</b>: <code>{message.chat.id}</code> added to the GBAN bot chat list."
     await message.reply(text=text, del_in=5, block=True)
     await bot.log_text(text=text, type="info")
 
@@ -30,21 +30,21 @@ async def add_gban_chat(bot: BOT, message: Message):
 async def remove_gban_chat(bot: BOT, message: Message):
     """
     CMD: DELG
-    INFO: Removes a chat from the GBAN list.
-    FLAGS: -all to delete all gban chats.
+    INFO: Removes a bot chat from the GBAN list.
+    FLAGS: -all to delete all gban bot chats.
     USAGE:
         .delg | .delg id | .delg -all
     """
     if "-all" in message.flags:
         await GBAN_DB.drop()
-        await message.reply("GBAN chat list cleared.")
+        await message.reply("GBAN bot chat list cleared.")
         return
 
     chat: int | str | Chat = message.input or message.chat
     name = ""
 
     if isinstance(chat, Chat):
-        name = f"Chat: {chat.title}\n"
+        name = f"Bot Chat: {chat.title}\n"
         chat = chat.id
     elif chat.lstrip("-").isdigit():
         chat = int(chat)
@@ -52,18 +52,18 @@ async def remove_gban_chat(bot: BOT, message: Message):
     deleted: int = await GBAN_DB.delete_data(id=chat)
 
     if deleted:
-        text = f"#GBANS\n<b>{name}</b><code>{chat}</code> removed from the GBAN chat list."
+        text = f"#GBANS\n<b>{name}</b><code>{chat}</code> removed from the GBAN bot chat list."
         await message.reply(text=text, del_in=8)
         await bot.log_text(text=text, type="info")
     else:
-        await message.reply(text=f"<b>{name or chat}</b> is not in the GBAN chat list.", del_in=8)
+        await message.reply(text=f"<b>{name or chat}</b> is not in the GBAN bot chat list.", del_in=8)
 
 
 @bot.add_cmd(cmd="listg")
 async def gban_chat_list(bot: BOT, message: Message):
     """
     CMD: LISTG
-    INFO: Displays the connected GBAN chats.
+    INFO: Displays the connected GBAN bot chats.
     FLAGS: -id to list Gban Chat IDs.
     USAGE: .listg | .listg -id
     """
@@ -79,10 +79,10 @@ async def gban_chat_list(bot: BOT, message: Message):
         total += 1
 
     if not total:
-        await message.reply("You don't have any chats connected to GBAN.")
+        await message.reply("You don't have any bot chats connected to GBAN.")
         return
 
-    output: str = f"List of <b>{total}</b> connected GBAN chats:\n\n{output}"
+    output: str = f"List of <b>{total}</b> connected GBAN bot chats:\n\n{output}"
     await message.reply(output, del_in=30, block=True)
 
 
@@ -185,7 +185,7 @@ async def perform_gban_task(
                 success_count += 1
             except Exception as e:
                 await bot.log_text(
-                    text=f"Error while sending gban command to chat: {gban_chat['name']} [{chat_id}]"
+                    text=f"Error while sending gban command to bot chat: {gban_chat['name']} [{chat_id}]"
                     f"\nError: {e}",
                     type="GBAN_ERROR",
                 )
@@ -195,7 +195,7 @@ async def perform_gban_task(
             await asyncio.sleep(1)
 
         if not total:
-            await progress.edit("You don't have any chats on the GBAN list! Use `.addg` to add one.")
+            await progress.edit("You don't have any bot chats on the GBAN list! Use `.addg` to add one.")
             return
 
         action_past_tense = task_type.replace("-", "") + "ned"
