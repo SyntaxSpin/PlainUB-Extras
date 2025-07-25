@@ -25,6 +25,11 @@ async def all_ban_handler(bot: BOT, message: Message):
         .abanp <reply to a proof> [reason]
     """
     progress: Message = await message.reply("❯")
+
+    extracted_info = await get_user_reason(message=message, progress=progress)
+    if not extracted_info:
+        await progress.edit("Failed to extract user info.")
+        return
     
     user, reason = await message.extract_user_n_reason()
     if isinstance(user, str):
@@ -70,6 +75,11 @@ async def all_unban_handler(bot: BOT, message: Message):
         .unaban <user_id/reply> [reason]
     """
     progress: Message = await message.reply("❯")
+
+    extracted_info = await get_user_reason(message=message, progress=progress)
+    if not extracted_info:
+        await progress.edit("Failed to extract user info.")
+        return
     
     user, reason = await message.extract_user_n_reason()
     if isinstance(user, str):
@@ -93,6 +103,19 @@ async def all_unban_handler(bot: BOT, message: Message):
         gban_cmd_str="ungban"
     )
 
+async def get_user_reason(message: Message, progress: Message) -> tuple[int, str, str] | None:
+    """Standardized helper function to extract user and reason."""
+    user, reason = await message.extract_user_n_reason()
+    if isinstance(user, str):
+        await progress.edit(user)
+        return None
+    if not isinstance(user, User):
+        user_id = user
+        user_mention = f"<a href='tg://user?id={user_id}'>{user_id}</a>"
+    else:
+        user_id = user.id
+        user_mention = user.mention
+    return user_id, user_mention, reason
 
 async def perform_all_ban_task(
     user_id: int, user_mention: str, reason: str, progress: Message, message: Message,
