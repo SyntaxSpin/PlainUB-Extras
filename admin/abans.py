@@ -176,9 +176,15 @@ async def perform_all_ban_task(
         await progress.edit(text=resp_str, del_in=8, block=True, disable_preview=True)
 
 async def _perform_fban_for_aban(user_id: int, reason: str, fban_cmd_str: str) -> tuple[int, list]:
-    """Helper function to perform FBAN logic and return results."""
     from pyrogram import filters
-    FBAN_REGEX = filters.regex(r"(New FedBan|starting a federation ban|FedBan Reason update|Would you like to update this reason)")
+
+    FBAN_REGEX = filters.regex(r"(New FedBan|starting a federation ban|Starting a federation ban|start a federation ban|FedBan Reason update|FedBan reason updated|Would you like to update this reason)")
+    UNFBAN_REGEX = filters.regex(r"(New un-FedBan|I'll give|Un-FedBan)")
+
+    if fban_cmd_str == "fban":
+        task_filter = FBAN_REGEX
+    else:
+        task_filter = UNFBAN_REGEX
     
     command = f"/{fban_cmd_str} <a href='tg://user?id={user_id}'>{user_id}</a> {reason}"
     total = 0
@@ -189,7 +195,7 @@ async def _perform_fban_for_aban(user_id: int, reason: str, fban_cmd_str: str) -
         chat_id = int(fed["_id"])
         try:
             cmd_msg = await bot.send_message(chat_id=chat_id, text=command, disable_preview=True)
-            response = await cmd_msg.get_response(filters=FBAN_REGEX, timeout=8)
+            response = await cmd_msg.get_response(filters=task_filter, timeout=8)
             if not response:
                 failed.append(fed["name"])
             elif "Would you like to update this reason" in response.text:
