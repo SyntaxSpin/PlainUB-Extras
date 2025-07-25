@@ -148,13 +148,13 @@ async def perform_all_ban_task(
 
         if fban_total > 0:
             if not fban_failed_list:
-                success_parts.append(f"Fbanned in <b>{fban_total}</b> feds.")
+                success_parts.append(f"Fbanned in <b>{fban_total}</b> feds")
             else:
                 failure_parts.append(f"Fban failed in {len(fban_failed_list)}/{fban_total} feds")
 
         if gban_total > 0:
             if not gban_failed_list:
-                success_parts.append(f"Gbanned in <b>{gban_total}</b> chats")
+                success_parts.append(f"Gbanned in <b>{gban_total}</b> bots.")
             else:
                 failure_parts.append(f"Gban failed in {len(gban_failed_list)}/{gban_total} bots.")
 
