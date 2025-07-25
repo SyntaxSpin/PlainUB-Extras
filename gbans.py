@@ -1,28 +1,97 @@
 import asyncio
 
 from pyrogram.enums import ChatType
-from pyrogram.errors import FloodWait, UserAdminInvalid
-from pyrogram.types import User
+from pyrogram.types import Chat, User
 from ub_core.utils.helpers import get_name
 
-from app import BOT, Config, Message, bot, extra_config
+from app import BOT, Config, CustomDB, Message, bot, extra_config
 
 GBAN_TASK_LOCK = asyncio.Lock()
 
+GBAN_DB = CustomDB["GBAN_CHAT_LIST"]
+
+
+@bot.add_cmd(cmd="addg")
+async def add_gban_chat(bot: BOT, message: Message):
+    """
+    CMD: ADDG
+    INFO: Adds a chat to the GBAN list.
+    USAGE:
+        .addg | .addg NAME
+    """
+    data = dict(name=message.input or message.chat.title, type=str(message.chat.type))
+    await GBAN_DB.add_data({"_id": message.chat.id, **data})
+    text = f"#GBANS\n<b>{data['name']}</b>: <code>{message.chat.id}</code> added to the GBAN chat list."
+    await message.reply(text=text, del_in=5, block=True)
+    await bot.log_text(text=text, type="info")
+
+
+@bot.add_cmd(cmd="delg")
+async def remove_gban_chat(bot: BOT, message: Message):
+    """
+    CMD: DELG
+    INFO: Removes a chat from the GBAN list.
+    FLAGS: -all to delete all gban chats.
+    USAGE:
+        .delg | .delg id | .delg -all
+    """
+    if "-all" in message.flags:
+        await GBAN_DB.drop()
+        await message.reply("GBAN chat list cleared.")
+        return
+
+    chat: int | str | Chat = message.input or message.chat
+    name = ""
+
+    if isinstance(chat, Chat):
+        name = f"Chat: {chat.title}\n"
+        chat = chat.id
+    elif chat.lstrip("-").isdigit():
+        chat = int(chat)
+
+    deleted: int = await GBAN_DB.delete_data(id=chat)
+
+    if deleted:
+        text = f"#GBANS\n<b>{name}</b><code>{chat}</code> removed from the GBAN chat list."
+        await message.reply(text=text, del_in=8)
+        await bot.log_text(text=text, type="info")
+    else:
+        await message.reply(text=f"<b>{name or chat}</b> is not in the GBAN chat list.", del_in=8)
+
+
+@bot.add_cmd(cmd="listg")
+async def gban_chat_list(bot: BOT, message: Message):
+    """
+    CMD: LISTG
+    INFO: Displays the connected GBAN chats.
+    FLAGS: -id to list Gban Chat IDs.
+    USAGE: .listg | .listg -id
+    """
+    output: str = ""
+    total = 0
+
+    async for gban_chat in GBAN_DB.find():
+        output += f'<b>• {gban_chat["name"]}</b>\n'
+
+        if "-id" in message.flags:
+            output += f'  <code>{gban_chat["_id"]}</code>\n'
+
+        total += 1
+
+    if not total:
+        await message.reply("You don't have any chats connected to GBAN.")
+        return
+
+    output: str = f"List of <b>{total}</b> connected GBAN chats:\n\n{output}"
+    await message.reply(output, del_in=30, block=True)
+
 
 @bot.add_cmd(cmd=["gban", "gbanp"])
-async def global_ban(bot: BOT, message: Message):
-    """
-    CMD: GBAN / GBANP
-    INFO: Globally bans a user in all chats where the bot is an admin.
-    USAGE:
-        .gban <user_id/reply> [reason]
-        .gbanp <reply to a proof> [reason]
-    """
+async def gban_user(bot: BOT, message: Message):
     progress: Message = await message.reply("❯")
-    
     extracted_info = await get_user_reason(message=message, progress=progress)
     if not extracted_info:
+        await progress.edit("Failed to extract user info.")
         return
 
     user_id, user_mention, reason = extracted_info
@@ -34,55 +103,54 @@ async def global_ban(bot: BOT, message: Message):
     proof_str: str = ""
     if message.cmd == "gbanp":
         if not message.replied:
-            await progress.edit("Reply to a message to be used as proof.")
+            await progress.edit("Reply to a message with the proof.")
             return
         proof = await message.replied.forward(extra_config.FBAN_LOG_CHANNEL)
         proof_str = f"\n{ {proof.link} }"
 
-    reason_with_proof = f"{reason}{proof_str}"
+    reason = f"{reason}{proof_str}"
 
-    await perform_global_task(
+    gban_cmd: str = f"/gban <a href='tg://user?id={user_id}'>{user_id}</a> {reason}"
+
+    await perform_gban_task(
         user_id=user_id,
         user_mention=user_mention,
-        reason=reason_with_proof,
+        command=gban_cmd,
+        task_type="Gban",
+        reason=reason,
         progress=progress,
         message=message,
-        task_type="Gban",
     )
 
 
 @bot.add_cmd(cmd="ungban")
-async def un_global_ban(bot: BOT, message: Message):
-    """
-    CMD: UNGBAN
-    INFO: Globally unbans a user from all chats.
-    USAGE:
-        .ungban <user_id/reply> [reason]
-    """
+async def un_gban_user(bot: BOT, message: Message):
     progress: Message = await message.reply("❯")
-    
     extracted_info = await get_user_reason(message=message, progress=progress)
+
     if not extracted_info:
+        await progress.edit("Failed to extract user info.")
         return
 
     user_id, user_mention, reason = extracted_info
+    ungban_cmd: str = f"/ungban <a href='tg://user?id={user_id}'>{user_id}</a> {reason}"
 
-    await perform_global_task(
+    await perform_gban_task(
         user_id=user_id,
         user_mention=user_mention,
+        command=ungban_cmd,
+        task_type="Un-Gban",
         reason=reason,
         progress=progress,
         message=message,
-        task_type="Un-Gban",
     )
 
 
 async def get_user_reason(message: Message, progress: Message) -> tuple[int, str, str] | None:
-    """Shared function to extract user and reason."""
     user, reason = await message.extract_user_n_reason()
     if isinstance(user, str):
         await progress.edit(user)
-        return None
+        return
     if not isinstance(user, User):
         user_id = user
         user_mention = f"<a href='tg://user?id={user_id}'>{user_id}</a>"
@@ -92,55 +160,44 @@ async def get_user_reason(message: Message, progress: Message) -> tuple[int, str
     return user_id, user_mention, reason
 
 
-async def perform_global_task(
+async def perform_gban_task(
     user_id: int,
     user_mention: str,
+    command: str,
+    task_type: str,
     reason: str,
     progress: Message,
     message: Message,
-    task_type: str,
 ):
-    """Performs the gban/ungban task by iterating through all of the bot's chats."""
     async with GBAN_TASK_LOCK:
         await progress.edit("❯❯")
 
-        action_count: int = 0
-        failed_count: int = 0
-        total_chats: int = 0
+        total: int = 0
+        failed: list[str] = []
+        success_count: int = 0
 
-        async for dialog in bot.get_dialogs():
-            if dialog.chat.type not in [ChatType.GROUP, ChatType.SUPERGROUP]:
-                continue
-            
-            total_chats += 1
-            chat_id = dialog.chat.id
+        async for gban_chat in GBAN_DB.find():
+            chat_id = int(gban_chat["_id"])
+            total += 1
 
             try:
-                if task_type == "Gban":
-                    await bot.ban_chat_member(chat_id=chat_id, user_id=user_id)
-                else:
-                    await bot.unban_chat_member(chat_id=chat_id, user_id=user_id)
-                action_count += 1
-                await asyncio.sleep(0.1)
+                await bot.send_message(chat_id=chat_id, text=command, disable_preview=True)
+                success_count += 1
+            except Exception as e:
+                await bot.log_text(
+                    text=f"Error while sending gban command to chat: {gban_chat['name']} [{chat_id}]"
+                    f"\nError: {e}",
+                    type="GBAN_ERROR",
+                )
+                failed.append(gban_chat["name"])
+                continue
 
-            except FloodWait as e:
-                await bot.log_text(f"#GBAN #FLOODWAIT\nSleeping for {e.value}s.")
-                await asyncio.sleep(e.value + 2)
-                try:
-                    if task_type == "Gban":
-                        await bot.ban_chat_member(chat_id=chat_id, user_id=user_id)
-                    else:
-                        await bot.unban_chat_member(chat_id=chat_id, user_id=user_id)
-                    action_count += 1
-                except Exception:
-                    failed_count += 1
-            except (UserAdminInvalid, Exception):
-                failed_count += 1
-        
-        if total_chats == 0:
-            await progress.edit("The bot isn't in any groups.")
+            await asyncio.sleep(1)
+
+        if not total:
+            await progress.edit("You don't have any chats on the GBAN list! Use `.addg` to add one.")
             return
-        
+
         action_past_tense = task_type.replace("-", "") + "ned"
 
         resp_str = (
@@ -150,14 +207,14 @@ async def perform_global_task(
             f"\n<b>Initiated in</b>: {message.chat.title or 'PM'}"
         )
 
-        if failed_count > 0:
-            resp_str += f"\n<b>Failed</b> in: {failed_count}/{total_chats} groups."
+        if failed:
+            resp_str += f"\n<b>Failed</b> in: {len(failed)}/{total}\n• " + "\n• ".join(failed)
         else:
-            resp_str += f"\n<b>Status</b>: {action_past_tense} in <b>{total_chats}</b> groups."
+            resp_str += f"\n<b>Status</b>: Command for {action_past_tense} sent to <b>{total}</b> chats."
 
         if not message.is_from_owner:
             resp_str += f"\n\n<b>By</b>: {get_name(message.from_user)}"
-        
+
         await bot.send_message(
             chat_id=extra_config.FBAN_LOG_CHANNEL, text=resp_str, disable_preview=True
         )
