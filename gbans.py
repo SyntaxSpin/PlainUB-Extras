@@ -210,7 +210,7 @@ async def perform_gban_task(
         if failed:
             resp_str += f"\n<b>Failed</b> in: {len(failed)}/{total}\n• " + "\n• ".join(failed)
         else:
-            resp_str += f"\n<b>Status</b>: Command for {action_past_tense} sent to <b>{total}</b> chats."
+            resp_str += f"\n<b>Status</b>: {action_past_tense} in <b>{total}</b> bots."
 
         if not message.is_from_owner:
             resp_str += f"\n\n<b>By</b>: {get_name(message.from_user)}"
