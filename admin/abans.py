@@ -51,6 +51,15 @@ async def all_ban_handler(bot: BOT, message: Message):
 
     reason_with_proof = f"{reason}{proof_str}"
 
+    if message.replied and message.chat.type != ChatType.PRIVATE:
+        try:
+            if message.chat._raw.admin_rights:
+                await message.replied.reply(
+                    text=f"!dban {reason}", disable_preview=True, del_in=3, block=False
+                )
+        except UserNotParticipant:
+            pass
+
     await perform_all_ban_task(
         user_id=user_id,
         user_mention=user_mention,
