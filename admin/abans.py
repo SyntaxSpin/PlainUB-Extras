@@ -119,18 +119,20 @@ async def perform_all_ban_task(
     task_type: str, fban_cmd_str: str, gban_cmd_str: str
 ):
     async with ABAN_TASK_LOCK:
+        fban_count = await FBAN_DB.count_documents({})
+        if fban_count == 0:
+            await progress.edit("No Feds are configured. Use .fban command or add a fed with .addf.", del_in=8)
+            return
+
+        gban_count = await GBAN_DB.count_documents({})
+        if gban_count == 0:
+            await progress.edit("No Gban chats are configured. Use .gban command or add a chat with .addg.", del_in=8)
+            return
+        
         await progress.edit("❯❯")
 
         fban_total, fban_failed_list = await _perform_fban_for_aban(user_id, reason, fban_cmd_str)
         gban_total, gban_failed_list = await _perform_gban_for_aban(user_id, reason, gban_cmd_str)
-
-    if fban_total == 0:
-        await progress.edit("No Feds are configured. Use .fban command or add a fed with .addf command.")
-        return
-
-    if gban_total == 0:
-        await progress.edit("No Gban bot chats are configured. Use .gban command or add a chat with .addg command.")
-        return
 
         action_past_tense = task_type.replace("-", "") + "ned"
 
