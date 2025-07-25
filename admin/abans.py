@@ -55,7 +55,7 @@ async def all_ban_handler(bot: BOT, message: Message):
         try:
             if message.chat._raw.admin_rights:
                 await message.replied.reply(
-                    text=f"!dban {reason}", disable_preview=True, del_in=3, block=False
+                    text=f"!dban {reason_with_proof}", disable_preview=True, del_in=3, block=False
                 )
         except UserNotParticipant:
             pass
