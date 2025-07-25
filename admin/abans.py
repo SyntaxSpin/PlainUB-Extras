@@ -5,14 +5,10 @@ from ub_core.utils.helpers import get_name
 
 from app import BOT, Config, CustomDB, Message, bot, extra_config
 
-try:
-    from ubot.app.temp.fbans import FED_DB as FBAN_DB
-    from ubot.app.temp.gbans import GBAN_DB
-except (ImportError, ModuleNotFoundError):
-    FBAN_DB = CustomDB["FED_LIST"]
-    GBAN_DB = CustomDB["GBAN_CHAT_LIST"]
-
 ABAN_TASK_LOCK = asyncio.Lock()
+
+FBAN_DB = CustomDB["FED_LIST"]
+GBAN_DB = CustomDB["GBAN_CHAT_LIST"]
 
 
 @bot.add_cmd(cmd=["aban", "abanp"])
