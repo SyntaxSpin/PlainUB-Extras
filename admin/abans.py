@@ -1,6 +1,7 @@
 import asyncio
 
-from pyrogram.types import User
+from pyrogram.enums import ChatType
+from pyrogram.types import Chat, User
 from ub_core.utils.helpers import get_name
 
 from app import BOT, Config, CustomDB, Message, bot, extra_config
