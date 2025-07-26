@@ -2,17 +2,26 @@ import asyncio
 
 from pyrogram import filters
 from pyrogram.types import Message, User
-from ub_core.utils.helpers import get_name, get_user
 
 from app import BOT, bot
 
+# --- CONFIGURATION ---
+# In this list, provide the IDs of the bots you want to query.
+# You can add any number of them.
+# Below are some popular bots as an example:
 FED_BOTS_TO_QUERY = [
     1087968824,  # Rose
     1788759329,  # AstrakoBot
+    # Add other bot IDs here, e.g., 536639844
 ]
+# --------------------
 
 
 def parse_fedstat_response(response: Message) -> str:
+    """
+    Parses the bot's response and returns a formatted result.
+    Tailored for common response formats (like Rose's).
+    """
     bot_name = response.from_user.first_name
     text = response.text.html.lower()
 
@@ -37,11 +46,11 @@ def parse_fedstat_response(response: Message) -> str:
 async def fed_stat_handler(bot: BOT, message: Message):
     """
     CMD: FSTAT / FEDSTAT
-    INFO: Checks the user's federation ban status.
+    INFO: Checks a user's federation ban status.
     USAGE:
         .fstat [user_id/username/reply]
     NOTE:
-        If you don't submit the target, you've checked your own status.
+        If no target is specified, it will check your own status.
     """
     progress: Message = await message.reply("Checking fedstat...")
 
@@ -51,12 +60,10 @@ async def fed_stat_handler(bot: BOT, message: Message):
     elif message.replied:
         target_identifier = message.replied.from_user.id
     else:
-        target_identifier = message.from_user.id
+        target_identifier = "me"
 
     try:
-        user_to_check: User = await get_user(target_identifier, message)
-        if isinstance(user_to_check, str):
-            return await progress.edit(user_to_check)
+        user_to_check: User = await bot.get_users(target_identifier)
     except Exception as e:
         return await progress.edit(f"<b>Error:</b> Could not find the specified user.\n<code>{e}</code>")
     
@@ -77,7 +84,7 @@ async def fed_stat_handler(bot: BOT, message: Message):
                 bot_info = await bot.get_users(bot_id)
                 results.append(f"<b>• {bot_info.first_name}:</b> <i>No response (timeout).</i>")
 
-        except Exception as e:
+        except Exception:
             try:
                 bot_info = await bot.get_users(bot_id)
                 results.append(f"<b>• {bot_info.first_name}:</b> <i>Error during query.</i>")
