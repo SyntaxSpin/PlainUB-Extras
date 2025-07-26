@@ -65,7 +65,7 @@ async def fed_stat_handler(bot: BOT, message: Message):
 
             if response:
                 if "checking" in response.text.lower():
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(5)
 
                 if response.document:
                     await response.forward(message.chat.id)
