@@ -12,9 +12,6 @@ FED_BOTS_TO_QUERY = [
 ]
 
 def parse_fedstat_response(response: Message) -> str:
-    """
-    Parses the bot's response and returns a formatted result.
-    """
     bot_name = response.from_user.first_name
     text = response.text.html.lower()
 
@@ -45,7 +42,7 @@ async def fed_stat_handler(bot: BOT, message: Message):
     NOTE:
         If no target is specified, it will check your own status.
     """
-    progress: Message = await message.reply("❯")
+    progress: Message = await message.reply("Checking fedbans...")
 
     target_identifier = "me"
     if message.input:
@@ -58,36 +55,28 @@ async def fed_stat_handler(bot: BOT, message: Message):
     except Exception as e:
         return await progress.edit(f"<b>Error:</b> Could not find the specified user.\n<code>{e}</code>")
     
-    await progress.edit("❯❯")
-    
     results = []
 
     for bot_id in FED_BOTS_TO_QUERY:
+        bot_info = await bot.get_users(bot_id)
         try:
-            await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
-            
-            response: Message = await bot.listen(
+            sent_cmd = await bot.send_message(
                 chat_id=bot_id,
-                filters=filters.user(bot_id),
-                timeout=10
+                text=f"/fedstat {user_to_check.id}"
             )
             
-            results.append(parse_fedstat_response(response))
+            response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=10)
 
-        except asyncio.TimeoutError:
-            bot_info = await bot.get_users(bot_id)
-            results.append(f"<b>• {bot_info.first_name}:</b> <i>No response (timeout).</i>")
+            if response and response.text:
+                results.append(parse_fedstat_response(response))
+            else:
+                results.append(f"<b>• {bot_info.first_name}:</b> <i>No response (timeout).</i>")
 
         except (UserIsBlocked, PeerIdInvalid):
-            bot_info = await bot.get_users(bot_id)
-            results.append(f"<b>• {bot_info.first_name}:</b> <i>Bot blocked or unreachable. Please start/unblock it manually and try again.</i>")
+            results.append(f"<b>• {bot_info.first_name}:</b> <i>Bot blocked or unreachable. Please start/unblock it manually.</i>")
         
         except Exception as e:
-            try:
-                bot_info = await bot.get_users(bot_id)
-                results.append(f"<b>• {bot_info.first_name}:</b> <i>An unknown error occurred.</i>\n  <code>{e}</code>")
-            except Exception:
-                results.append(f"<b>• Bot <code>{bot_id}</code>:</b> <i>Unreachable or invalid ID.</i>")
+            results.append(f"<b>• {bot_info.first_name}:</b> <i>An unknown error occurred.</i>")
         
         await asyncio.sleep(0.5)
 
