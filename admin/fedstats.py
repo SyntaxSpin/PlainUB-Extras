@@ -10,7 +10,7 @@ from app import BOT, bot
 # You can add any number of them.
 # Below are some popular bots as an example:
 FED_BOTS_TO_QUERY = [
-    1087968824,  # Rose
+    609517172,  # Rose
     1788759329,  # AstrakoBot
     # Add other bot IDs here, e.g., 536639844
 ]
