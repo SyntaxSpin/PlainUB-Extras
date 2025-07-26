@@ -64,8 +64,11 @@ async def fed_stat_handler(bot: BOT, message: Message):
             response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=10)
 
             if response:
-                if "checking" in response.text.lower():
-                    await asyncio.sleep(5)
+                if response.text and "checking" in response.text.lower():
+                    await asyncio.sleep(3)
+                    updated_response = await bot.get_messages(bot_id, response.id)
+                    if updated_response:
+                        response = updated_response
 
                 if response.document:
                     await response.forward(message.chat.id)
