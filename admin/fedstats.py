@@ -64,6 +64,9 @@ async def fed_stat_handler(bot: BOT, message: Message):
             response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=10)
 
             if response:
+                if "checking" in response.text.lower():
+                    await asyncio.sleep(3)
+
                 if response.document:
                     await response.forward(message.chat.id)
                     results.append(f"<b>• {bot_info.first_name}:</b> Banned (details in forwarded file)")
