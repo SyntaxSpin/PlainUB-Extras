@@ -25,7 +25,7 @@ def parse_fedstat_response(response: Message) -> str:
     if any(phrase in lower_text for phrase in not_banned_phrases):
         return f"<b>• {bot_name}:</b> Not Banned"
     else:
-        return f"<b>• {bot_name}:</b>\n{text}"
+        return f"<b>• {bot_name}:</b>\n<blockquote expandable>{text}</blockquote>"
 
 
 @bot.add_cmd(cmd=["fstat", "fedstat"])
