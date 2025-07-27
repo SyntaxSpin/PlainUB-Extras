@@ -13,9 +13,8 @@ FED_BOTS_TO_QUERY = [
 ]
 
 def safe_escape(text: str) -> str:
-    """Escapes HTML characters and fixes apostrophe encoding for Telegram."""
     escaped_text = html.escape(str(text))
-    return escaped_text.replace("'", "’")
+    return escaped_text.replace("&#x27;", "’")
 
 def parse_text_response(response: Message) -> str:
     """Parses a non-file text response and formats it correctly."""
@@ -59,17 +58,20 @@ async def fed_stat_handler(bot: BOT, message: Message):
         try:
             sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
             
-            # Use a single, generous get_response. It will wait through "checking..." and edits.
-            response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=20)
+            # Step 1: Get the first response from the bot.
+            response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
 
-            # Check if the final response has the button.
+            # Step 2: If it's the temporary "checking..." message, wait for the actual, second response.
+            if response.text and "checking" in response.text.lower():
+                response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
+
+            # Step 3: If the final response has the "Make file" button, click it and report.
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
-                await response.click(0) # Click the button
-                # And that's it. We don't wait for anything else from this bot.
+                await response.click(0)
                 pm_link = f"tg://user?id={bot_id}"
                 results.append(f"<b>• {bot_info.first_name}:</b> Button clicked. <a href='{pm_link}'>View file in PM.</a>")
             
-            # If there's no button, it must be a text response.
+            # Step 4: If there is no button, it must be a text response.
             elif response.text:
                 results.append(parse_text_response(response))
             
