@@ -4,7 +4,6 @@ import os
 
 from pyrogram import filters
 from pyrogram.errors import PeerIdInvalid, UserIsBlocked
-from pyrogram.handlers import MessageHandler
 from pyrogram.types import Message, User
 
 from app import BOT, bot
@@ -28,7 +27,6 @@ def parse_text_response(response: Message) -> str:
         return f"<b>• {bot_name}:</b> Not Banned"
     else:
         return f"<b>• {bot_name}:</b> <blockquote expandable>{safe_escape(text)}</blockquote>"
-
 
 @bot.add_cmd(cmd=["fstat", "fedstat"])
 async def fed_stat_handler(bot: BOT, message: Message):
@@ -58,52 +56,36 @@ async def fed_stat_handler(bot: BOT, message: Message):
     for bot_id in FED_BOTS_TO_QUERY:
         bot_info = await bot.get_users(bot_id)
         try:
+            # This logic simulates the behavior of Telethon's conversation manager.
+            
             sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
+            
+            # Step 1: Get the first response from the bot.
             response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
 
-            if not response:
-                results.append(f"<b>• {bot_info.first_name}:</b> <i>No response (timeout).</i>")
-                continue
+            # Step 2: If it's a "checking..." message, wait for the actual response.
+            if response.text and "checking" in response.text.lower():
+                response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
 
+            # Step 3: If the actual response has the "Make file" button, handle the full sequence.
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
-                file_received_event = asyncio.Event()
-                file_message = None
-
-                async def file_handler(_, msg: Message):
-                    nonlocal file_message
-                    if msg.document:
-                        file_message = msg
-                        file_received_event.set()
-
-                handler = MessageHandler(file_handler, filters.chat(bot_id) & filters.document)
-                
                 try:
-                    bot.add_handler(handler)
                     await response.click(0)
-                    await asyncio.wait_for(file_received_event.wait(), timeout=30)
-                    response = file_message
+                    # Now, we must wait for a *new* message from the bot that is a document.
+                    # This is the crucial step that mimics `conv.get_response()`.
+                    file_response = await bot.listen(
+                        chat_id=bot_id,
+                        filters=filters.user(bot_id) & filters.document,
+                        timeout=30
+                    )
+                    
+                    # Forward the file and add the custom message to the report.
+                    await file_response.forward(message.chat.id)
+                    results.append(f"<b>• {bot_info.first_name}:</b> Fedstat file attached, sending bot respond...")
                 except asyncio.TimeoutError:
                     results.append(f"<b>• {bot_info.first_name}:</b> <i>Button clicked, but file was not received (timeout).</i>")
-                    continue
-                finally:
-                    bot.remove_handler(handler)
-
-            if response.document:
-                file_path = None
-                try:
-                    file_path = await bot.download_media(response.document)
-                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                        content = f.read()
-                    
-                    if len(content) > 3800:
-                        await response.forward(message.chat.id)
-                        results.append(f"<b>• {bot_info.first_name}:</b> Fedstat file attached, sending bot respond...")
-                    else:
-                        results.append(f"<b>• {bot_info.first_name}:</b> <blockquote expandable>{safe_escape(content)}</blockquote>")
-                finally:
-                    if file_path and os.path.exists(file_path):
-                        os.remove(file_path)
-
+            
+            # Step 4: Handle all other text responses.
             elif response.text:
                 results.append(parse_text_response(response))
             
