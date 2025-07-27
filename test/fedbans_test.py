@@ -16,7 +16,7 @@ FED_BOTS_TO_QUERY = [
 
 def safe_escape(text: str) -> str:
     escaped_text = html.escape(str(text))
-    return escaped_text.replace("&#x27;", "’")
+    return escaped_text.replace("'", "’")
 
 def parse_text_response(response: Message) -> str:
     bot_name = response.from_user.first_name
@@ -29,10 +29,10 @@ def parse_text_response(response: Message) -> str:
         return f"<b>• {bot_name}:</b> <blockquote expandable>{safe_escape(text)}</blockquote>"
 
 async def wait_for_file(bot: BOT, chat_id: int, timeout: int = 60) -> Message | None:
-    """Correctly waits for a specific file message using a temporary handler."""
+    """Waits for a document with a specific caption, confirmed by screenshot."""
     required_filters = (
         filters.user(chat_id) & 
-        filters.document & 
+        filters.document &
         filters.regex(r"List of fedbans", flags=re.IGNORECASE)
     )
     
@@ -51,10 +51,7 @@ async def wait_for_file(bot: BOT, chat_id: int, timeout: int = 60) -> Message | 
         bot.remove_handler(*handler)
 
 async def query_single_bot(bot: BOT, bot_id: int, user_to_check: User) -> tuple[str, Message | None]:
-    """
-    Queries a single bot and returns its result text and an optional file message.
-    This function is self-contained to avoid concurrency issues.
-    """
+    """Queries a single bot and returns its result text and an optional file message."""
     bot_info = await bot.get_users(bot_id)
     try:
         sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
@@ -67,11 +64,13 @@ async def query_single_bot(bot: BOT, bot_id: int, user_to_check: User) -> tuple[
             try:
                 await response.click(0)
             except Exception:
-                pass  # Ignore click errors, it likely worked anyway
+                pass
             
-            # Wait for the file directly here, not in a background task
             file_message = await wait_for_file(bot, bot_id)
-            result_text = f"<b>• {bot_info.first_name}:</b> Bot sent a file with the full ban list."
+            if file_message:
+                result_text = f"<b>• {bot_info.first_name}:</b> Bot sent a file with the full ban list."
+            else:
+                result_text = f"<b>• {bot_info.first_name}:</b> Bot was supposed to send a file, but it wasn't received (timeout)."
             return result_text, file_message
         
         elif response.text:
@@ -90,9 +89,7 @@ async def query_single_bot(bot: BOT, bot_id: int, user_to_check: User) -> tuple[
 
 @bot.add_cmd(cmd=["fstattest", "fedstattest"])
 async def fed_stat_handler(bot: BOT, message: Message):
-    """
-    Checks a user's federation ban status using a robust concurrent method.
-    """
+    """Checks a user's federation ban status using a robust concurrent method."""
     progress: Message = await message.reply("Checking fedstat...")
 
     target_identifier = "me"
@@ -106,10 +103,7 @@ async def fed_stat_handler(bot: BOT, message: Message):
     except Exception as e:
         return await progress.edit(f"<b>Error:</b> Could not find the specified user.\n<code>{e}</code>")
 
-    # Create a list of tasks to run concurrently
     tasks = [query_single_bot(bot, bot_id, user_to_check) for bot_id in FED_BOTS_TO_QUERY]
-    
-    # Run all tasks at once and wait for them all to complete
     all_results = await asyncio.gather(*tasks)
 
     result_texts = []
@@ -131,6 +125,5 @@ async def fed_stat_handler(bot: BOT, message: Message):
         link_preview_options=LinkPreviewOptions(is_disabled=True)
     )
 
-    # Forward all collected files after the report is sent
     for file in files_to_forward:
         await file.forward(message.chat.id)
