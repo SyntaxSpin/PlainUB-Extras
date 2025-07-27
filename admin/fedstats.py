@@ -18,7 +18,7 @@ def safe_escape(text: str) -> str:
     return escaped_text.replace("&#x27;", "’")
 
 def parse_text_response(response: Message) -> str:
-    """Parses a non-file text response from a fed bot using safe_escape."""
+    """Parses a non-file text response and formats it correctly."""
     bot_name = response.from_user.first_name
     text = response.text
     lower_text = text.lower()
@@ -59,38 +59,45 @@ async def fed_stat_handler(bot: BOT, message: Message):
     for bot_id in FED_BOTS_TO_QUERY:
         bot_info = await bot.get_users(bot_id)
         try:
-            async with bot.conversation(bot_id, timeout=30) as conv:
-                await conv.send_message(f"/fedstat {user_to_check.id}")
-                
-                response = await conv.get_response()
+            # The logic is structured to handle a multi-step conversation using get_response
+            sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
+            
+            # Step 1: Get the first response
+            response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
 
-                if response.text and "checking" in response.text.lower():
-                    response = await conv.get_response(timeout=10) # Wait for the next message (the edit)
+            # Step 2: If it's a "checking" message, wait for the next one
+            if response.text and "checking" in response.text.lower():
+                response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
 
-                if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
-                    await response.click(0)
-                    response = await conv.get_response(filters=filters.document, timeout=30) # Wait for the new file message
-                
-                if response.document:
-                    file_path = None
-                    try:
-                        file_path = await bot.download_media(response.document)
-                        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                            content = f.read()
-                        
-                        if len(content) > 3800:
-                            await response.forward(message.chat.id)
-                            results.append(f"<b>• {bot_info.first_name}:</b> Banned (details in forwarded file)")
-                        else:
-                            results.append(f"<b>• {bot_info.first_name}:</b> <blockquote expandable>{safe_escape(content)}</blockquote>")
+            # Step 3: If it's a message with the "Make file" button, click it and wait for the file
+            if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
+                await response.click(0)
+                # Now wait for a NEW message from the bot that is a document
+                response = await sent_cmd.get_response(filters=filters.user(bot_id) & filters.document, timeout=30)
+            
+            # Final step: Process whatever the final response is
+            if response.document:
+                file_path = None
+                try:
+                    file_path = await bot.download_media(response.document)
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read()
                     
-                    finally:
-                        if file_path and os.path.exists(file_path):
-                            os.remove(file_path)
-                elif response.text:
-                    results.append(parse_text_response(response))
-                else:
-                    results.append(f"<b>• {bot_info.first_name}:</b> <i>Received an unsupported response type.</i>")
+                    if len(content) > 3800:
+                        await response.forward(message.chat.id)
+                        results.append(f"<b>• {bot_info.first_name}:</b> Banned (details in forwarded file)")
+                    else:
+                        results.append(f"<b>• {bot_info.first_name}:</b> <blockquote expandable>{safe_escape(content)}</blockquote>")
+                
+                finally:
+                    if file_path and os.path.exists(file_path):
+                        os.remove(file_path)
+
+            elif response.text:
+                results.append(parse_text_response(response))
+            
+            else:
+                results.append(f"<b>• {bot_info.first_name}:</b> <i>Received an unsupported response type.</i>")
 
         except (UserIsBlocked, PeerIdInvalid):
             results.append(f"<b>• {bot_info.first_name}:</b> <i>Bot blocked or unreachable. Please start/unblock it manually.</i>")
