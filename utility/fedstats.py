@@ -23,7 +23,7 @@ def parse_text_response(response: Message) -> str:
     bot_name = response.from_user.first_name
     text = response.text
     lower_text = text.lower()
-    not_banned_phrases = ["no bans", "not banned", "hasn't been banned"]
+    not_banned_phrases = ["no bans", "not banned", "hasn't been banned",]
     if any(phrase in lower_text for phrase in not_banned_phrases):
         return f"<b>• {bot_name}:</b> Not Banned"
     else:
@@ -54,7 +54,7 @@ async def query_single_bot(bot: BOT, bot_id: int, user_to_check: User) -> tuple[
     """Queries a single bot using a robust method."""
     bot_info = await bot.get_users(bot_id)
     try:
-        sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
+        sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fbanstat {user_to_check.id}")
         response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=20)
 
         if response.text and "checking" in response.text.lower():
