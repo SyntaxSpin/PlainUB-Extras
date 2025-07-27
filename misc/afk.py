@@ -1,3 +1,5 @@
+import asyncio
+import re
 from datetime import datetime, timezone
 
 from pyrogram import filters
@@ -59,7 +61,7 @@ async def afk_ping_handler(client: BOT, message: Message):
         if message.reply_to_message.from_user and message.reply_to_message.from_user.is_self:
             is_reply_to_me = True
 
-    if is_private or is_mentioned or is_reply_to_me:
+    if (is_private or is_mentioned or is_reply_to_me):
         if message.from_user and not message.from_user.is_self:
             time_afk = format_duration(AFK_DATA['start_time'])
             reason = AFK_DATA['reason']
@@ -86,6 +88,8 @@ async def afk_stop_handler(client: BOT, message: Message):
         await asyncio.sleep(5)
         await welcome_back_message.delete()
 
+CMD_PREFIX = re.escape(bot.CMD_HELP[0])
+afk_stop_filter = filters.outgoing & ~filters.regex(f"^{CMD_PREFIX}")
 
-bot.add_handler(MessageHandler(afk_stop_handler, filters.outgoing & ~filters.cmd(bot.CMD_HELP[0])), group=1)
+bot.add_handler(MessageHandler(afk_stop_handler, afk_stop_filter), group=1)
 bot.add_handler(MessageHandler(afk_ping_handler, ~filters.outgoing & ~filters.service & ~filters.bot), group=2)
