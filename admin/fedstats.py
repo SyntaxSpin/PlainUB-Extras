@@ -1,3 +1,5 @@
+# fedstat.py (Final Robust Version with Separated Send/Receive Logic)
+
 import asyncio
 import html
 import os
@@ -22,14 +24,11 @@ def parse_text_response(response: Message) -> str:
     bot_name = response.from_user.first_name
     text = response.text
     lower_text = text.lower()
-
     not_banned_phrases = ["no bans", "not banned", "hasn't been banned"]
-
     if any(phrase in lower_text for phrase in not_banned_phrases):
         return f"<b>• {bot_name}:</b> Not Banned"
     else:
         return f"<b>• {bot_name}:</b> <blockquote expandable>{safe_escape(text)}</blockquote>"
-
 
 @bot.add_cmd(cmd=["fstat", "fedstat"])
 async def fed_stat_handler(bot: BOT, message: Message):
@@ -58,24 +57,27 @@ async def fed_stat_handler(bot: BOT, message: Message):
 
     for bot_id in FED_BOTS_TO_QUERY:
         bot_info = await bot.get_users(bot_id)
+        sent_cmd = None
+        
         try:
-            # The logic is structured to handle a multi-step conversation using get_response
             sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
-            
-            # Step 1: Get the first response
-            response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
+        except (UserIsBlocked, PeerIdInvalid):
+            results.append(f"<b>• {bot_info.first_name}:</b> <i>Bot blocked or unreachable.</i>")
+            continue  # Move to the next bot
+        except Exception:
+            results.append(f"<b>• {bot_info.first_name}:</b> <i>Failed to send command. Bot might be offline.</i>")
+            continue  # Move to the next bot
 
-            # Step 2: If it's a "checking" message, wait for the next one
+        try:
+            response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
+            
             if response.text and "checking" in response.text.lower():
                 response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
 
-            # Step 3: If it's a message with the "Make file" button, click it and wait for the file
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
                 await response.click(0)
-                # Now wait for a NEW message from the bot that is a document
                 response = await sent_cmd.get_response(filters=filters.user(bot_id) & filters.document, timeout=30)
             
-            # Final step: Process whatever the final response is
             if response.document:
                 file_path = None
                 try:
@@ -88,24 +90,19 @@ async def fed_stat_handler(bot: BOT, message: Message):
                         results.append(f"<b>• {bot_info.first_name}:</b> Banned (details in forwarded file)")
                     else:
                         results.append(f"<b>• {bot_info.first_name}:</b> <blockquote expandable>{safe_escape(content)}</blockquote>")
-                
                 finally:
                     if file_path and os.path.exists(file_path):
                         os.remove(file_path)
-
             elif response.text:
                 results.append(parse_text_response(response))
-            
             else:
                 results.append(f"<b>• {bot_info.first_name}:</b> <i>Received an unsupported response type.</i>")
 
-        except (UserIsBlocked, PeerIdInvalid):
-            results.append(f"<b>• {bot_info.first_name}:</b> <i>Bot blocked or unreachable. Please start/unblock it manually.</i>")
         except asyncio.TimeoutError:
             results.append(f"<b>• {bot_info.first_name}:</b> <i>No response (timeout).</i>")
         except Exception:
-            results.append(f"<b>• {bot_info.first_name}:</b> <i>An unknown error occurred.</i>")
-
+            results.append(f"<b>• {bot_info.first_name}:</b> <i>Error while processing response.</i>")
+        
         await asyncio.sleep(0.5)
 
     final_report = (
