@@ -15,7 +15,7 @@ async def google_search_handler(bot: BOT, message: Message):
         await message.edit("Please provide a search query. Usage: `.g What is Telegram?`")
         return
 
-    await message.edit(f"<i>Searching Google for:</i> <code>{query}</code>...")
+    await message.edit(f"Searching Google for: <code>{query}</code>...")
 
     try:
         # Perform the search, limit to 5 results
