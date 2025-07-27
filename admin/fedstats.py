@@ -3,7 +3,7 @@ import html
 
 from pyrogram import filters
 from pyrogram.errors import PeerIdInvalid, UserIsBlocked
-from pyrogram.types import LinkPreviewOptions, Message, User
+from pyrogram.types import Message, User
 
 from app import BOT, bot
 
@@ -13,8 +13,9 @@ FED_BOTS_TO_QUERY = [
 ]
 
 def safe_escape(text: str) -> str:
+    """Escapes HTML characters and fixes apostrophe encoding for Telegram."""
     escaped_text = html.escape(str(text))
-    return escaped_text.replace("&#x27;", "’")
+    return escaped_text.replace("'", "’")
 
 def parse_text_response(response: Message) -> str:
     """Parses a non-file text response and formats it correctly."""
@@ -26,6 +27,7 @@ def parse_text_response(response: Message) -> str:
         return f"<b>• {bot_name}:</b> Not Banned"
     else:
         return f"<b>• {bot_name}:</b> <blockquote expandable>{safe_escape(text)}</blockquote>"
+
 
 @bot.add_cmd(cmd=["fstat", "fedstat"])
 async def fed_stat_handler(bot: BOT, message: Message):
@@ -57,25 +59,17 @@ async def fed_stat_handler(bot: BOT, message: Message):
         try:
             sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
             
-            # Use a generous timeout to catch the entire interaction
+            # Use a single, generous get_response. It will wait through "checking..." and edits.
             response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=20)
 
-            # Step 1: Handle the "checking..." message by waiting for the edit.
-            if response.text and "checking" in response.text.lower():
-                await asyncio.sleep(4)  # Wait for Rose to edit the message
-                # Re-fetch the message by its ID to get the final, edited content
-                updated_response = await bot.get_messages(bot_id, response.id)
-                if updated_response:
-                    response = updated_response
-
-            # Step 2: Now, with the final version of the message, check for the button.
+            # Check if the final response has the button.
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
                 await response.click(0) # Click the button
-                # And that's it. We don't wait for anything else. We just report.
+                # And that's it. We don't wait for anything else from this bot.
                 pm_link = f"tg://user?id={bot_id}"
                 results.append(f"<b>• {bot_info.first_name}:</b> Button clicked. <a href='{pm_link}'>View file in PM.</a>")
             
-            # Step 3: If there's no button, it must be a text response.
+            # If there's no button, it must be a text response.
             elif response.text:
                 results.append(parse_text_response(response))
             
@@ -97,7 +91,4 @@ async def fed_stat_handler(bot: BOT, message: Message):
         f"{'\n'.join(results)}"
     )
 
-    await progress.edit(
-        final_report,
-        link_preview_options=LinkPreviewOptions(is_disabled=True)
-    )
+    await progress.edit(final_report, disable_web_page_preview=True)
