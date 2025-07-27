@@ -12,6 +12,7 @@ from app import BOT, bot
 FED_BOTS_TO_QUERY = [
     609517172,  # Rose
     1376954911,  # AstrakoBot
+    885745757,  #Sophie
 ]
 
 def safe_escape(text: str) -> str:
