@@ -88,7 +88,7 @@ async def query_single_bot(bot: BOT, bot_id: int, user_to_check: User) -> tuple[
         return f"<b>• {bot_info.first_name}:</b> <i>An unknown error occurred.</i>", None
 
 
-@bot.add_cmd(cmd=["fstattest", "fedstattest"])
+@bot.add_cmd(cmd=["fstat", "fedstat"])
 async def fed_stat_handler(bot: BOT, message: Message):
     """Checks a user's federation ban status using a robust concurrent method."""
     progress: Message = await message.reply("Checking fedstat...")
