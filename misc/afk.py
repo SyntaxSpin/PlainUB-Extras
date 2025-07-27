@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timezone
 
 from pyrogram import filters
+from pyrogram.enums import ChatType
 from pyrogram.handlers import MessageHandler
 from pyrogram.types import Message
 
@@ -60,7 +61,7 @@ async def afk_ping_handler(client: BOT, message: Message):
     if not AFK_DATA["is_afk"] or (message.from_user and message.from_user.is_self):
         return
 
-    is_private = message.chat.is_private
+    is_private = message.chat.type == ChatType.PRIVATE
     is_mentioned = message.mentioned
     is_reply_to_me = False
     
