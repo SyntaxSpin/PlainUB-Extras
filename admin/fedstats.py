@@ -27,7 +27,6 @@ def parse_text_response(response: Message) -> str:
     else:
         return f"<b>• {bot_name}:</b> <blockquote expandable>{safe_escape(text)}</blockquote>"
 
-
 @bot.add_cmd(cmd=["fstat", "fedstat"])
 async def fed_stat_handler(bot: BOT, message: Message):
     """
@@ -61,20 +60,22 @@ async def fed_stat_handler(bot: BOT, message: Message):
             # Use a generous timeout to catch the entire interaction
             response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=20)
 
-            # If we get the "checking" message, we must wait for the final, edited content
+            # Step 1: Handle the "checking..." message by waiting for the edit.
             if response.text and "checking" in response.text.lower():
-                await asyncio.sleep(4)
+                await asyncio.sleep(4)  # Wait for Rose to edit the message
+                # Re-fetch the message by its ID to get the final, edited content
                 updated_response = await bot.get_messages(bot_id, response.id)
                 if updated_response:
                     response = updated_response
 
-            # Check if the final response has the button.
+            # Step 2: Now, with the final version of the message, check for the button.
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
-                await response.click(0)
+                await response.click(0) # Click the button
+                # And that's it. We don't wait for anything else. We just report.
                 pm_link = f"tg://user?id={bot_id}"
                 results.append(f"<b>• {bot_info.first_name}:</b> Button clicked. <a href='{pm_link}'>View file in PM.</a>")
             
-            # If there's no button, it must be a text response.
+            # Step 3: If there's no button, it must be a text response.
             elif response.text:
                 results.append(parse_text_response(response))
             
