@@ -13,9 +13,8 @@ FED_BOTS_TO_QUERY = [
 ]
 
 def safe_escape(text: str) -> str:
-    """Escapes HTML characters and fixes apostrophe encoding for Telegram."""
     escaped_text = html.escape(str(text))
-    return escaped_text.replace("'", "’")
+    return escaped_text.replace("&#x27;", "’")
 
 def parse_text_response(response: Message) -> str:
     """Parses a non-file text response and formats it correctly."""
