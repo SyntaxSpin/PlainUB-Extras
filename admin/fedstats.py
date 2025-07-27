@@ -61,6 +61,13 @@ async def fed_stat_handler(bot: BOT, message: Message):
             # Use a single, generous get_response. It will wait through "checking..." and edits.
             response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=20)
 
+            if response.text and "checking" in response.text.lower():
+                await asyncio.sleep(4)  # Wait for Rose to edit the message
+                # Re-fetch the message by its ID to get the final, edited content
+                updated_response = await bot.get_messages(bot_id, response.id)
+                if updated_response:
+                    response = updated_response
+
             # If the response has the "Make file" button, just report it and provide a link.
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
                 pm_link = f"tg://user?id={bot_id}"
