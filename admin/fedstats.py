@@ -56,44 +56,48 @@ async def fed_stat_handler(bot: BOT, message: Message):
     for bot_id in FED_BOTS_TO_QUERY:
         bot_info = await bot.get_users(bot_id)
         try:
-            # Using the conversation manager for robust multi-step interaction
-            async with bot.conversation(bot_id, timeout=35) as conv:
-                # Step 1: Send the initial command
-                await conv.send_message(f"/fedstat {user_to_check.id}")
-                
-                # Step 2: Get the first response (e.g., "Checking..." or "Make file" button)
-                response = await conv.get_response()
+            # The logic is structured to handle a multi-step conversation using get_response
+            sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
+            
+            # Step 1: Get the first response
+            response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
 
-                # Step 3: If it's the button, click it and wait for the file message
-                if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
-                    await response.click(0)
-                    # Now wait for the NEW message from Rose, which will be the file
-                    response = await conv.get_response(filters=filters.document, timeout=30)
-                
-                # Final Step: Process whatever the final response is
-                if response.document:
-                    file_path = None
-                    try:
-                        file_path = await bot.download_media(response.document)
-                        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                            content = f.read()
-                        
-                        if len(content) > 3800:
-                            await response.forward(message.chat.id)
-                            results.append(f"<b>• {bot_info.first_name}:</b> Banned (details in forwarded file)")
-                        else:
-                            results.append(f"<b>• {bot_info.first_name}:</b> <blockquote expandable>{safe_escape(content)}</blockquote>")
+            # Step 2: If it's a "checking" message, wait for the next one
+            if response.text and "checking" in response.text.lower():
+                response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
+
+            # Step 3: If it's a message with the "Make file" button, click it and wait for the file
+            if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
+                await response.click(0)
+                # Now wait for a NEW message from the bot that is a document
+                response = await sent_cmd.get_response(filters=filters.user(bot_id) & filters.document, timeout=30)
+            
+            # Final step: Process whatever the final response is
+            if response.document:
+                file_path = None
+                try:
+                    file_path = await bot.download_media(response.document)
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read()
                     
-                    finally:
-                        if file_path and os.path.exists(file_path):
-                            os.remove(file_path)
-                elif response.text:
-                    results.append(parse_text_response(response))
-                else:
-                    results.append(f"<b>• {bot_info.first_name}:</b> <i>Received an unsupported response type.</i>")
+                    if len(content) > 3800:
+                        await response.forward(message.chat.id)
+                        results.append(f"<b>• {bot_info.first_name}:</b> Banned (details in forwarded file)")
+                    else:
+                        results.append(f"<b>• {bot_info.first_name}:</b> <blockquote expandable>{safe_escape(content)}</blockquote>")
+                
+                finally:
+                    if file_path and os.path.exists(file_path):
+                        os.remove(file_path)
+
+            elif response.text:
+                results.append(parse_text_response(response))
+            
+            else:
+                results.append(f"<b>• {bot_info.first_name}:</b> <i>Received an unsupported response type.</i>")
 
         except (UserIsBlocked, PeerIdInvalid):
-            results.append(f"<b>• {bot_info.first_name}:</b> <i>Bot blocked or unreachable.</i>")
+            results.append(f"<b>• {bot_info.first_name}:</b> <i>Bot blocked or unreachable. Please start/unblock it manually.</i>")
         except asyncio.TimeoutError:
             results.append(f"<b>• {bot_info.first_name}:</b> <i>No response (timeout).</i>")
         except Exception:
