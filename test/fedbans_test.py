@@ -16,7 +16,7 @@ FED_BOTS_TO_QUERY = [
 
 def safe_escape(text: str) -> str:
     escaped_text = html.escape(str(text))
-    return escaped_text.replace("'", "’")
+    return escaped_text.replace("&#x27;", "’")
 
 def parse_text_response(response: Message) -> str:
     bot_name = response.from_user.first_name
@@ -29,7 +29,7 @@ def parse_text_response(response: Message) -> str:
         return f"<b>• {bot_name}:</b> <blockquote expandable>{safe_escape(text)}</blockquote>"
 
 async def wait_for_file(bot: BOT, chat_id: int, timeout: int = 60) -> Message | None:
-    """Waits for a document with a specific caption, confirmed by screenshot."""
+    """Waits for a document with a specific caption."""
     required_filters = (
         filters.user(chat_id) & 
         filters.document &
@@ -51,7 +51,7 @@ async def wait_for_file(bot: BOT, chat_id: int, timeout: int = 60) -> Message | 
         bot.remove_handler(*handler)
 
 async def query_single_bot(bot: BOT, bot_id: int, user_to_check: User) -> tuple[str, Message | None]:
-    """Queries a single bot and returns its result text and an optional file message."""
+    """Queries a single bot using a race-condition-proof method."""
     bot_info = await bot.get_users(bot_id)
     try:
         sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
@@ -61,12 +61,17 @@ async def query_single_bot(bot: BOT, bot_id: int, user_to_check: User) -> tuple[
             response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=20)
 
         if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
+            file_listener_task = asyncio.create_task(wait_for_file(bot, bot_id))
+            
+            await asyncio.sleep(0.1)
+
             try:
                 await response.click(0)
             except Exception:
                 pass
+
+            file_message = await file_listener_task
             
-            file_message = await wait_for_file(bot, bot_id)
             if file_message:
                 result_text = f"<b>• {bot_info.first_name}:</b> Bot sent a file with the full ban list."
             else:
@@ -83,7 +88,8 @@ async def query_single_bot(bot: BOT, bot_id: int, user_to_check: User) -> tuple[
         return f"<b>• {bot_info.first_name}:</b> <i>Bot blocked or unreachable.</i>", None
     except asyncio.TimeoutError:
         return f"<b>• {bot_info.first_name}:</b> <i>No response (timeout).</i>", None
-    except Exception:
+    except Exception as e:
+        print(f"Unknown error in query_single_bot for {bot_id}: {e}")
         return f"<b>• {bot_info.first_name}:</b> <i>An unknown error occurred.</i>", None
 
 
