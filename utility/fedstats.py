@@ -23,7 +23,7 @@ def parse_text_response(response: Message) -> str:
     bot_name = response.from_user.first_name
     text = response.text
     lower_text = text.lower()
-    not_banned_phrases = ["no bans", "not banned", "hasn't been banned",]
+    not_banned_phrases = ["no bans", "not banned", "hasn't been banned"]
     if any(phrase in lower_text for phrase in not_banned_phrases):
         return f"<b>• {bot_name}:</b> Not Banned"
     else:
