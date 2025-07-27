@@ -39,15 +39,19 @@ def format_duration(start_time: datetime) -> str:
 
 @bot.add_cmd(cmd="afk")
 async def set_afk_handler(bot: BOT, message: Message):
+    was_afk = AFK_DATA["is_afk"]
+    AFK_DATA["is_afk"] = False
+
     AFK_DATA["start_time"] = datetime.now(timezone.utc)
     AFK_DATA["reason"] = message.input or "No reason specified."
-    AFK_DATA["is_afk"] = True
     
     reason_text = f"<b>Reason:</b> {AFK_DATA['reason']}"
     
     await message.edit(
         f"You are now AFK.\n{reason_text}"
     )
+    AFK_DATA["is_afk"] = True
+
 
 async def afk_ping_handler(client: BOT, message: Message):
     if not AFK_DATA["is_afk"]:
@@ -88,8 +92,5 @@ async def afk_stop_handler(client: BOT, message: Message):
         await asyncio.sleep(5)
         await welcome_back_message.delete()
 
-CMD_PREFIX = re.escape(bot.CMD_HELP[0])
-afk_stop_filter = filters.outgoing & ~filters.regex(f"^{CMD_PREFIX}")
-
-bot.add_handler(MessageHandler(afk_stop_handler, afk_stop_filter), group=1)
+bot.add_handler(MessageHandler(afk_stop_handler, filters.outgoing), group=1)
 bot.add_handler(MessageHandler(afk_ping_handler, ~filters.outgoing & ~filters.service & ~filters.bot), group=2)
