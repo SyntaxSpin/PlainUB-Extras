@@ -58,20 +58,34 @@ async def fed_stat_handler(bot: BOT, message: Message):
         try:
             sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
             
-            # Step 1: Get the first response from the bot.
+            # Step 1: Get the first response
             response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
 
-            # Step 2: If it's the temporary "checking..." message, wait for the actual, second response.
+            # Step 2: If it's a "checking" message, wait for the actual response
             if response.text and "checking" in response.text.lower():
                 response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
-
-            # Step 3: If the final response has the "Make file" button, click it and report.
+                
+            # Step 3: If the response has the "Make file" button, handle the full sequence
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
                 await response.click(0)
-                pm_link = f"tg://user?id={bot_id}"
-                results.append(f"<b>• {bot_info.first_name}:</b> Button clicked. <a href='{pm_link}'>View file in PM.</a>")
+                try:
+                    # Wait for the NEW message from the bot that is a document
+                    file_response = await sent_cmd.get_response(
+                        filters=filters.user(bot_id) & filters.document, 
+                        timeout=30
+                    )
+                    pm_link = f"tg://user?id={bot_id}"
+                    results.append(
+                        f"<b>• {bot_info.first_name}:</b> File received: <code>{file_response.document.file_name}</code>. "
+                        f"<a href='{pm_link}'>Open PM</a>"
+                    )
+                except asyncio.TimeoutError:
+                    pm_link = f"tg://user?id={bot_id}"
+                    results.append(
+                        f"<b>• {bot_info.first_name}:</b> Button clicked, but no file received. <a href='{pm_link}'>Check PM.</a>"
+                    )
             
-            # Step 4: If there is no button, it must be a text response.
+            # Step 4: Handle all other text responses
             elif response.text:
                 results.append(parse_text_response(response))
             
