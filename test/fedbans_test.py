@@ -80,7 +80,12 @@ async def fed_stat_handler(bot: BOT, message: Message):
                 response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=20)
 
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
-                await response.click(0)
+                try:
+                    # We try to click, but we don't care if it throws an error after succeeding
+                    await response.click(0)
+                except Exception:
+                    # Ignore any error here, as the click likely went through anyway
+                    pass
                 # Launch the file listener in the background
                 file_listener_task = asyncio.create_task(wait_for_rose_file(bot_id))
                 results.append(f"<b>• {bot_info.first_name}:</b> Bot send me file with fedstat. Sending...")
