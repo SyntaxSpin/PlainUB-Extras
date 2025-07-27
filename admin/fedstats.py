@@ -59,37 +59,23 @@ async def fed_stat_handler(bot: BOT, message: Message):
             # The logic is structured to handle a multi-step conversation using get_response
             sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
             
-            # Step 1: Get the first response
+            # Step 1: Get the first response (e.g., "checking..." or the actual result)
             response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
 
-            # Step 2: If it's a "checking" message, wait for the next one
-            if response.text and "checking" in response.text.lower():
-                response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
-
-            # Step 3: If it's a message with the "Make file" button, click it and wait for the file
+            # Step 2: If it's the "Make file" button, handle the full file sequence
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
-                await response.click(0)
-                # Now wait for a NEW message from the bot that is a document
-                response = await sent_cmd.get_response(filters=filters.user(bot_id) & filters.document, timeout=30)
-            
-            # Final step: Process whatever the final response is
-            if response.document:
-                file_path = None
                 try:
-                    file_path = await bot.download_media(response.document)
-                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                        content = f.read()
+                    await response.click(0)
+                    # Now wait for a NEW message from the bot that is a document
+                    file_response = await sent_cmd.get_response(filters=filters.user(bot_id) & filters.document, timeout=30)
                     
-                    if len(content) > 3800:
-                        await response.forward(message.chat.id)
-                        results.append(f"<b>• {bot_info.first_name}:</b> Banned (details in forwarded file)")
-                    else:
-                        results.append(f"<b>• {bot_info.first_name}:</b> <blockquote expandable>{safe_escape(content)}</blockquote>")
-                
-                finally:
-                    if file_path and os.path.exists(file_path):
-                        os.remove(file_path)
-
+                    # Forward the file and add the custom message to the report
+                    await file_response.forward(message.chat.id)
+                    results.append(f"<b>• {bot_info.first_name}:</b> Fedstat file attached, sending bot respond...")
+                except asyncio.TimeoutError:
+                    results.append(f"<b>• {bot_info.first_name}:</b> <i>Button clicked, but file was not received (timeout).</i>")
+            
+            # Step 3: Handle all other text responses (like a short list from Rose or AstrakoBot)
             elif response.text:
                 results.append(parse_text_response(response))
             
