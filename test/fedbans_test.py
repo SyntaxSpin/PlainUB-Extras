@@ -2,6 +2,7 @@ import asyncio
 import html
 import re
 
+from pyrogram.handlers import MessageHandler
 from pyrogram import filters
 from pyrogram.errors import PeerIdInvalid, UserIsBlocked
 from pyrogram.types import LinkPreviewOptions, Message, User
@@ -29,20 +30,30 @@ def parse_text_response(response: Message) -> str:
     else:
         return f"<b>• {bot_name}:</b> <blockquote expandable>{safe_escape(text)}</blockquote>"
 
-async def wait_for_rose_file(bot_id: int) -> Message | None:
+async def wait_for_rose_file(bot: BOT, chat_id: int, timeout: int = 60) -> Message | None:
     """
     This is the dedicated file listener. It waits patiently in the background.
     It waits for 60 seconds and returns the file message, or None on timeout.
     """
+    required_filters = (
+        filters.user(chat_id) & 
+        filters.document & 
+        filters.regex(r"List of fedbans", flags=re.IGNORECASE)
+    )
+    
+    queue = asyncio.Queue()
+
+    async def _handler(_, message: Message):
+        await queue.put(message)
+
+    handler = bot.add_handler(MessageHandler(_handler, filters=required_filters), group=-1)
+
     try:
-        file_response = await bot.listen(
-            chat_id=bot_id,
-            filters=filters.document & filters.regex(r"List of fedbans", flags=re.IGNORECASE),
-            timeout=60
-        )
-        return file_response
+        return await asyncio.wait_for(queue.get(), timeout=timeout)
     except asyncio.TimeoutError:
         return None
+    finally:
+        bot.remove_handler(*handler)
 
 @bot.add_cmd(cmd=["fstattest", "fedstattest"])
 async def fed_stat_handler(bot: BOT, message: Message):
@@ -81,14 +92,12 @@ async def fed_stat_handler(bot: BOT, message: Message):
 
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
                 try:
-                    # We try to click, but we don't care if it throws an error after succeeding
                     await response.click(0)
                 except Exception:
-                    # Ignore any error here, as the click likely went through anyway
                     pass
-                # Launch the file listener in the background
-                file_listener_task = asyncio.create_task(wait_for_rose_file(bot_id))
-                results.append(f"<b>• {bot_info.first_name}:</b> Bot send me file with fedstat. Sending...")
+                
+                file_listener_task = asyncio.create_task(wait_for_rose_file(bot, bot_id))
+                results.append(f"<b>• {bot_info.first_name}:</b> Bot is preparing a file. It will be sent shortly.")
             
             elif response.text:
                 results.append(parse_text_response(response))
@@ -116,7 +125,6 @@ async def fed_stat_handler(bot: BOT, message: Message):
         link_preview_options=LinkPreviewOptions(is_disabled=True)
     )
 
-    # Now, wait for the background file listener to finish and forward the file
     if file_listener_task:
         file_message = await file_listener_task
         if file_message:
