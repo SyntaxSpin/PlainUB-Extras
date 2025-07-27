@@ -70,7 +70,6 @@ async def fed_stat_handler(bot: BOT, message: Message):
                 await response.click(0)
                 pm_link = f"tg://user?id={bot_id}"
                 results.append(f"<b>• {bot_info.first_name}:</b> Button clicked. <a href='{pm_link}'>View file in PM.</a>")
-                continue
             
             # Step 4: If there is no button, it must be a text response.
             elif response.text:
