@@ -58,42 +58,24 @@ async def fed_stat_handler(bot: BOT, message: Message):
         try:
             sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
             
-            # Step 1: Get the first response
-            response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
+            # Use a single, generous get_response. It will wait through "checking..." and edits.
+            response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=20)
 
-            # Step 2: If it's a "checking" message, wait for the actual response
-            if response.text and "checking" in response.text.lower():
-                response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
-                
-            # Step 3: If the response has the "Make file" button, handle the full sequence
+            # If the response has the "Make file" button, just report it and provide a link.
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
-                await response.click(0)
-                try:
-                    # Wait for the NEW message from the bot that is a document
-                    file_response = await sent_cmd.get_response(
-                        filters=filters.user(bot_id) & filters.document, 
-                        timeout=30
-                    )
-                    pm_link = f"tg://user?id={bot_id}"
-                    results.append(
-                        f"<b>• {bot_info.first_name}:</b> File received: <code>{file_response.document.file_name}</code>. "
-                        f"<a href='{pm_link}'>Open PM</a>"
-                    )
-                except asyncio.TimeoutError:
-                    pm_link = f"tg://user?id={bot_id}"
-                    results.append(
-                        f"<b>• {bot_info.first_name}:</b> Button clicked, but no file received. <a href='{pm_link}'>Check PM.</a>"
-                    )
+                pm_link = f"tg://user?id={bot_id}"
+                results.append(f"<b>• {bot_info.first_name}:</b> Bot sent a file button. <a href='{pm_link}'>Click here to view in PM.</a>")
             
-            # Step 4: Handle all other text responses
+            # If it's a text response, parse it.
             elif response.text:
                 results.append(parse_text_response(response))
             
+            # Handle anything else as unsupported.
             else:
                 results.append(f"<b>• {bot_info.first_name}:</b> <i>Received an unsupported response type.</i>")
 
         except (UserIsBlocked, PeerIdInvalid):
-            results.append(f"<b>• {bot_info.first_name}:</b> <i>Bot blocked or unreachable. Please start/unblock it manually.</i>")
+            results.append(f"<b>• {bot_info.first_name}:</b> <i>Bot blocked or unreachable.</i>")
         except asyncio.TimeoutError:
             results.append(f"<b>• {bot_info.first_name}:</b> <i>No response (timeout).</i>")
         except Exception:
