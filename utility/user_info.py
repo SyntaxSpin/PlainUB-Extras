@@ -8,7 +8,7 @@ from app import BOT, bot
 
 def safe_escape(text: str) -> str:
     escaped_text = html.escape(str(text))
-    return escaped_text.replace("&#x27;", "’")
+    return escaped_text.replace("'", "’")
 
 def get_user_status(user: User) -> str:
     if not user.status:
@@ -94,12 +94,17 @@ async def info_handler(bot: BOT, message: Message):
 
     final_text = "\n".join(info_lines)
     
-    photo_id = target_user.photo.big_file_id if target_user.photo else None
+    photo_to_send = None
+    try:
+        async for photo in bot.get_chat_photos(target_user.id, limit=1):
+            photo_to_send = photo.file_id
+    except Exception:
+        pass
     
-    if photo_id:
+    if photo_to_send:
         await progress.delete()
         await message.reply_photo(
-            photo=photo_id,
+            photo=photo_to_send,
             caption=final_text
         )
     else:
