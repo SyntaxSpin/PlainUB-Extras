@@ -1,5 +1,3 @@
-# fedstat.py (Final Corrected Version for Rose's multi-step response)
-
 import asyncio
 import html
 import os
