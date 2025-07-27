@@ -1,12 +1,10 @@
 import asyncio
 import html
-import os
 import re
 
 from pyrogram import filters
 from pyrogram.errors import PeerIdInvalid, UserIsBlocked
-from pyrogram.handlers import MessageHandler
-from pyrogram.types import Message, User
+from pyrogram.types import LinkPreviewOptions, Message, User
 
 from app import BOT, bot
 
@@ -31,6 +29,20 @@ def parse_text_response(response: Message) -> str:
     else:
         return f"<b>• {bot_name}:</b> <blockquote expandable>{safe_escape(text)}</blockquote>"
 
+async def wait_for_rose_file(bot_id: int) -> Message | None:
+    """
+    This is the dedicated file listener. It waits patiently in the background.
+    It waits for 60 seconds and returns the file message, or None on timeout.
+    """
+    try:
+        file_response = await bot.listen(
+            chat_id=bot_id,
+            filters=filters.document & filters.regex(r"List of fedbans", flags=re.IGNORECASE),
+            timeout=60
+        )
+        return file_response
+    except asyncio.TimeoutError:
+        return None
 
 @bot.add_cmd(cmd=["fstattest", "fedstattest"])
 async def fed_stat_handler(bot: BOT, message: Message):
@@ -56,6 +68,7 @@ async def fed_stat_handler(bot: BOT, message: Message):
         return await progress.edit(f"<b>Error:</b> Could not find the specified user.\n<code>{e}</code>")
 
     results = []
+    file_listener_task = None
 
     for bot_id in FED_BOTS_TO_QUERY:
         bot_info = await bot.get_users(bot_id)
@@ -63,39 +76,18 @@ async def fed_stat_handler(bot: BOT, message: Message):
             sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
             response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=20)
 
-            if not response:
-                results.append(f"<b>• {bot_info.first_name}:</b> <i>No response (timeout).</i>")
-                continue
-
             if response.text and "checking" in response.text.lower():
                 response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=20)
 
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
-                file_received_event = asyncio.Event()
-                
-                async def file_handler(_, msg: Message):
-                    # This handler will catch the new message from Rose
-                    if msg.document and msg.caption and "List of fedbans that have banned" in msg.caption:
-                        await msg.forward(message.chat.id)
-                        file_received_event.set()
-
-                handler = MessageHandler(
-                    file_handler, 
-                    filters.chat(bot_id) & filters.document & filters.regex(r"List of fedbans that have banned", flags=re.IGNORECASE)
-                )
-                
-                try:
-                    bot.add_handler(handler)
-                    await response.click(0)
-                    await asyncio.wait_for(file_received_event.wait(), timeout=30)
-                    results.append(f"<b>• {bot_info.first_name}:</b> Fedstat file attached, sending bot respond...")
-                except asyncio.TimeoutError:
-                    results.append(f"<b>• {bot_info.first_name}:</b> <i>Button clicked, but file was not received (timeout).</i>")
-                finally:
-                    bot.remove_handler(handler)
-
+                await response.click(0)
+                # Launch the file listener in the background
+                file_listener_task = asyncio.create_task(wait_for_rose_file(bot_id))
+                results.append(f"<b>• {bot_info.first_name}:</b> Bot send me file with fedstat. Sending...")
+            
             elif response.text:
                 results.append(parse_text_response(response))
+            
             else:
                 results.append(f"<b>• {bot_info.first_name}:</b> <i>Received an unsupported response type.</i>")
 
@@ -114,4 +106,13 @@ async def fed_stat_handler(bot: BOT, message: Message):
         f"{'\n'.join(results)}"
     )
 
-    await progress.edit(final_report, disable_web_page_preview=True)
+    await progress.edit(
+        final_report,
+        link_preview_options=LinkPreviewOptions(is_disabled=True)
+    )
+
+    # Now, wait for the background file listener to finish and forward the file
+    if file_listener_task:
+        file_message = await file_listener_task
+        if file_message:
+            await file_message.forward(message.chat.id)
