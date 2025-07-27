@@ -11,12 +11,10 @@ ERROR_VISIBLE_DURATION = 8
 def sync_shorten(url: str) -> str:
     """
     Synchronous shorten function using tinyurl.com's simple text API.
-    It returns the shortened URL as plain text.
     """
     params = {"url": url}
     response = requests.get(API_URL, params=params)
     response.raise_for_status()
-    
     return response.text
 
 @bot.add_cmd(cmd=["sl", "short", "shortlink"])
@@ -38,24 +36,23 @@ async def shortlink_handler(bot: BOT, message: Message):
         await message.delete()
         return
 
-    progress_message = await message.reply("Shortening link...")
+    progress_message = await message.reply("<i>Shortening link...</i>")
     
     try:
         shortened_url = await asyncio.to_thread(sync_shorten, url_to_shorten)
         
         if shortened_url and shortened_url.startswith("http"):
-            await progress_message.delete()
             final_text = (
                 f"<b>Original URL:</b> <code>{html.escape(url_to_shorten)}</code>\n"
                 f"<b>Shortened URL:</b> <code>{shortened_url}</code>"
             )
-            await bot.send_message(
-                chat_id=message.chat.id,
-                text=final_text,
+            await progress_message.edit(
+                final_text,
                 disable_web_page_preview=True
             )
             await message.delete()
             return
+        
         else:
             error_text = f"<b>API Error:</b> Received an invalid response from the server."
             await progress_message.edit(error_text)
