@@ -1,3 +1,5 @@
+# fedstat.py (Final Corrected Version for Rose's multi-step response)
+
 import asyncio
 import html
 import os
@@ -56,26 +58,28 @@ async def fed_stat_handler(bot: BOT, message: Message):
     for bot_id in FED_BOTS_TO_QUERY:
         bot_info = await bot.get_users(bot_id)
         try:
-            # The logic is structured to handle a multi-step conversation using get_response
             sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
             
-            # Step 1: Get the first response (e.g., "checking..." or the actual result)
+            # Step 1: Get the first response
             response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
 
-            # Step 2: If it's the "Make file" button, handle the full file sequence
+            # Step 2: If it's a "checking" message, wait for the actual response
+            if response.text and "checking" in response.text.lower():
+                response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
+
+            # Step 3: If the actual response has the "Make file" button, handle the full sequence
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
                 try:
                     await response.click(0)
-                    # Now wait for a NEW message from the bot that is a document
+                    # Now wait for the NEW message from the bot that is a document
                     file_response = await sent_cmd.get_response(filters=filters.user(bot_id) & filters.document, timeout=30)
                     
-                    # Forward the file and add the custom message to the report
                     await file_response.forward(message.chat.id)
                     results.append(f"<b>• {bot_info.first_name}:</b> Fedstat file attached, sending bot respond...")
                 except asyncio.TimeoutError:
                     results.append(f"<b>• {bot_info.first_name}:</b> <i>Button clicked, but file was not received (timeout).</i>")
             
-            # Step 3: Handle all other text responses (like a short list from Rose or AstrakoBot)
+            # Step 4: Handle all other responses (like a short list from Rose or AstrakoBot)
             elif response.text:
                 results.append(parse_text_response(response))
             
