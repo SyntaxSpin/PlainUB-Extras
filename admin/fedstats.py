@@ -28,6 +28,7 @@ def parse_text_response(response: Message) -> str:
     else:
         return f"<b>• {bot_name}:</b> <blockquote expandable>{safe_escape(text)}</blockquote>"
 
+
 @bot.add_cmd(cmd=["fstat", "fedstat"])
 async def fed_stat_handler(bot: BOT, message: Message):
     """
@@ -56,6 +57,7 @@ async def fed_stat_handler(bot: BOT, message: Message):
     for bot_id in FED_BOTS_TO_QUERY:
         bot_info = await bot.get_users(bot_id)
         try:
+            # The logic is structured to handle a multi-step conversation using get_response
             sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
             
             # Step 1: Get the first response
@@ -72,12 +74,13 @@ async def fed_stat_handler(bot: BOT, message: Message):
                     # Now wait for the NEW message from the bot that is a document
                     file_response = await sent_cmd.get_response(filters=filters.user(bot_id) & filters.document, timeout=30)
                     
+                    # Forward the file and add the custom message to the report
                     await file_response.forward(message.chat.id)
                     results.append(f"<b>• {bot_info.first_name}:</b> Fedstat file attached, sending bot respond...")
                 except asyncio.TimeoutError:
                     results.append(f"<b>• {bot_info.first_name}:</b> <i>Button clicked, but file was not received (timeout).</i>")
             
-            # Step 4: Handle all other responses (like a short list from Rose or AstrakoBot)
+            # Step 4: Handle all other text responses
             elif response.text:
                 results.append(parse_text_response(response))
             
