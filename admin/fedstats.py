@@ -18,7 +18,7 @@ def safe_escape(text: str) -> str:
     return escaped_text.replace("&#x27;", "’")
 
 def parse_text_response(response: Message) -> str:
-    """Parses a non-file text response from a fed bot."""
+    """Parses a non-file text response from a fed bot using safe_escape."""
     bot_name = response.from_user.first_name
     text = response.text
     lower_text = text.lower()
@@ -65,41 +65,34 @@ async def fed_stat_handler(bot: BOT, message: Message):
             if not response:
                 results.append(f"<b>• {bot_info.first_name}:</b> <i>No response (timeout).</i>")
                 continue
-
+            
             if response.text and "checking" in response.text.lower():
                 await asyncio.sleep(3)
-                updated_response = await bot.get_messages(bot_id, response.id)
-                if updated_response:
-                    response = updated_response
+                response = await bot.get_messages(bot_id, response.id)
 
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
-                try:
-                    await response.click(0)
-                    file_response = await sent_cmd.get_response(filters.document, timeout=30)
-                    response = file_response
-                except asyncio.TimeoutError:
-                    results.append(f"<b>• {bot_info.first_name}:</b> <i>Button clicked, but file not received.</i>")
-                    continue
+                await response.click(0)
+                await asyncio.sleep(5)
+                response = await bot.get_messages(bot_id, response.id)
 
-            if response and response.document:
+            if response.document:
                 file_path = None
                 try:
                     file_path = await bot.download_media(response.document)
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                         content = f.read()
                     
                     if len(content) > 3800:
                         await response.forward(message.chat.id)
-                        results.append(f"<b>• {bot_info.first_name}:</b> Banned (details in forwarded file - content too long for preview)")
+                        results.append(f"<b>• {bot_info.first_name}:</b> Banned (details in forwarded file - too long)")
                     else:
-                        safe_content = html.escape(content)
-                        results.append(f"<b>• {bot_info.first_name}:</b> <blockquote expandable>{safe_content}</blockquote>")
+                        results.append(f"<b>• {bot_info.first_name}:</b> <blockquote expandable>{safe_escape(content)}</blockquote>")
                 
                 finally:
                     if file_path and os.path.exists(file_path):
                         os.remove(file_path)
 
-            elif response and response.text:
+            elif response.text:
                 results.append(parse_text_response(response))
             
             else:
