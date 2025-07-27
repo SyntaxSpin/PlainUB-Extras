@@ -24,7 +24,7 @@ async def google_search_handler(bot: BOT, message: Message):
         await message.delete()
         return
 
-    progress_message = await message.reply(f"<i>Searching Google for:</i> <code>{query}</code>...")
+    progress_message = await message.reply(f"Searching Google for: <code>{query}</code>...")
 
     try:
         # Run the synchronous search function in a thread to avoid blocking
