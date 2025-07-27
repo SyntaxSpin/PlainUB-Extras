@@ -3,7 +3,7 @@ import html
 
 from pyrogram import filters
 from pyrogram.errors import PeerIdInvalid, UserIsBlocked
-from pyrogram.types import Message, User
+from pyrogram.types import LinkPreviewOptions, Message, User
 
 from app import BOT, bot
 
@@ -13,8 +13,9 @@ FED_BOTS_TO_QUERY = [
 ]
 
 def safe_escape(text: str) -> str:
+    """Escapes HTML characters and fixes apostrophe encoding for Telegram."""
     escaped_text = html.escape(str(text))
-    return escaped_text.replace("&#x27;", "’")
+    return escaped_text.replace("'", "’")
 
 def parse_text_response(response: Message) -> str:
     """Parses a non-file text response and formats it correctly."""
@@ -58,21 +59,23 @@ async def fed_stat_handler(bot: BOT, message: Message):
         try:
             sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
             
-            # Step 1: Get the first response
-            response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
+            # Use a generous timeout to catch the entire interaction
+            response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=20)
 
-            # Step 2: If it's a "checking" message, wait for the actual response
+            # If we get the "checking" message, we must wait for the final, edited content
             if response.text and "checking" in response.text.lower():
-                response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
+                await asyncio.sleep(4)
+                updated_response = await bot.get_messages(bot_id, response.id)
+                if updated_response:
+                    response = updated_response
 
-            # Step 3: If the response has the "Make file" button, click it and report with a link.
+            # Check if the final response has the button.
             if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
                 await response.click(0)
-                # Create a direct link to the bot's PM
                 pm_link = f"tg://user?id={bot_id}"
                 results.append(f"<b>• {bot_info.first_name}:</b> Button clicked. <a href='{pm_link}'>View file in PM.</a>")
             
-            # Step 4: Handle all other text responses (like a short list from Rose or AstrakoBot)
+            # If there's no button, it must be a text response.
             elif response.text:
                 results.append(parse_text_response(response))
             
@@ -94,4 +97,7 @@ async def fed_stat_handler(bot: BOT, message: Message):
         f"{'\n'.join(results)}"
     )
 
-    await progress.edit(final_report, disable_web_page_preview=True)
+    await progress.edit(
+        final_report,
+        link_preview_options=LinkPreviewOptions(is_disabled=True)
+    )
