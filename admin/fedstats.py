@@ -1,5 +1,3 @@
-# fedstat.py (Final Robust Version with Separated Send/Receive Logic)
-
 import asyncio
 import html
 import os
