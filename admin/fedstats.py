@@ -59,44 +59,38 @@ async def fed_stat_handler(bot: BOT, message: Message):
     for bot_id in FED_BOTS_TO_QUERY:
         bot_info = await bot.get_users(bot_id)
         try:
-            sent_cmd = await bot.send_message(chat_id=bot_id, text=f"/fedstat {user_to_check.id}")
-            response = await sent_cmd.get_response(filters=filters.user(bot_id), timeout=15)
-
-            if not response:
-                results.append(f"<b>• {bot_info.first_name}:</b> <i>No response (timeout).</i>")
-                continue
-            
-            if response.text and "checking" in response.text.lower():
-                await asyncio.sleep(3)
-                response = await bot.get_messages(bot_id, response.id)
-
-            if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
-                await response.click(0)
-                await asyncio.sleep(5)
-                response = await bot.get_messages(bot_id, response.id)
-
-            if response.document:
-                file_path = None
-                try:
-                    file_path = await bot.download_media(response.document)
-                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                        content = f.read()
-                    
-                    if len(content) > 3800:
-                        await response.forward(message.chat.id)
-                        results.append(f"<b>• {bot_info.first_name}:</b> Banned (details in forwarded file - too long)")
-                    else:
-                        results.append(f"<b>• {bot_info.first_name}:</b> <blockquote expandable>{safe_escape(content)}</blockquote>")
+            async with bot.conversation(bot_id, timeout=30) as conv:
+                await conv.send_message(f"/fedstat {user_to_check.id}")
                 
-                finally:
-                    if file_path and os.path.exists(file_path):
-                        os.remove(file_path)
+                response = await conv.get_response()
 
-            elif response.text:
-                results.append(parse_text_response(response))
-            
-            else:
-                results.append(f"<b>• {bot_info.first_name}:</b> <i>Received an unsupported response type.</i>")
+                if response.text and "checking" in response.text.lower():
+                    response = await conv.get_response(timeout=10) # Wait for the next message (the edit)
+
+                if response.reply_markup and "Make the fedban file" in str(response.reply_markup):
+                    await response.click(0)
+                    response = await conv.get_response(filters=filters.document, timeout=30) # Wait for the new file message
+                
+                if response.document:
+                    file_path = None
+                    try:
+                        file_path = await bot.download_media(response.document)
+                        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                            content = f.read()
+                        
+                        if len(content) > 3800:
+                            await response.forward(message.chat.id)
+                            results.append(f"<b>• {bot_info.first_name}:</b> Banned (details in forwarded file)")
+                        else:
+                            results.append(f"<b>• {bot_info.first_name}:</b> <blockquote expandable>{safe_escape(content)}</blockquote>")
+                    
+                    finally:
+                        if file_path and os.path.exists(file_path):
+                            os.remove(file_path)
+                elif response.text:
+                    results.append(parse_text_response(response))
+                else:
+                    results.append(f"<b>• {bot_info.first_name}:</b> <i>Received an unsupported response type.</i>")
 
         except (UserIsBlocked, PeerIdInvalid):
             results.append(f"<b>• {bot_info.first_name}:</b> <i>Bot blocked or unreachable. Please start/unblock it manually.</i>")
