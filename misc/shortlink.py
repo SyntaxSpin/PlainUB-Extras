@@ -5,15 +5,19 @@ from pyrogram.types import Message
 
 from app import BOT, bot
 
-requests.packages.urllib3.disable_warnings()
-API_URL = "https://cleanuri.com/api/v1/shorten"
+API_URL = "https://tinyurl.com/api-create.php"
 ERROR_VISIBLE_DURATION = 8
 
-def sync_shorten(url: str):
-    """Synchronous shorten function with SSL verification disabled."""
-    response = requests.post(API_URL, data={"url": url}, verify=False)
+def sync_shorten(url: str) -> str:
+    """
+    Synchronous shorten function using tinyurl.com's simple text API.
+    It returns the shortened URL as plain text.
+    """
+    params = {"url": url}
+    response = requests.get(API_URL, params=params)
     response.raise_for_status()
-    return response.json()
+    
+    return response.text
 
 @bot.add_cmd(cmd=["sl", "short", "shortlink"])
 async def shortlink_handler(bot: BOT, message: Message):
@@ -37,32 +41,29 @@ async def shortlink_handler(bot: BOT, message: Message):
     progress_message = await message.reply("<i>Shortening link...</i>")
     
     try:
-        data = await asyncio.to_thread(sync_shorten, url_to_shorten)
+        shortened_url = await asyncio.to_thread(sync_shorten, url_to_shorten)
         
-        if "result_url" in data:
-            shortened_url = data["result_url"]
+        if shortened_url and shortened_url.startswith("http"):
+            await progress_message.delete()
             final_text = (
                 f"<b>Original URL:</b> <code>{html.escape(url_to_shorten)}</code>\n"
                 f"<b>Shortened URL:</b> <code>{shortened_url}</code>"
             )
-            await progress_message.edit(
-                final_text,
+            await bot.send_message(
+                chat_id=message.chat.id,
+                text=final_text,
                 disable_web_page_preview=True
             )
             await message.delete()
             return
-
-        elif "error" in data:
-            error_text = f"<b>API Error:</b>\n<code>{html.escape(data['error'])}</code>"
-            await progress_message.edit(error_text)
         else:
-            error_text = "<b>An unknown API error occurred.</b>"
+            error_text = f"<b>API Error:</b> Received an invalid response from the server."
             await progress_message.edit(error_text)
 
     except Exception as e:
         error_text = f"<b>An error occurred:</b>\n<code>{html.escape(str(e))}</code>"
         await progress_message.edit(error_text)
-        
+
     await asyncio.sleep(ERROR_VISIBLE_DURATION)
     await progress_message.delete()
     try:
