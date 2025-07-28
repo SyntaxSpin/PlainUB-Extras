@@ -11,7 +11,6 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 ERROR_VISIBLE_DURATION = 8
 
 async def run_command(command: str) -> tuple[str, str, int]:
-    """Asynchronously runs a shell command."""
     process = await asyncio.create_subprocess_shell(
         command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
     )
@@ -23,37 +22,36 @@ async def run_command(command: str) -> tuple[str, str, int]:
     )
 
 def sync_resize_image(input_path: str, width: int, height: int) -> str:
-    """Resizes a static image using Pillow."""
     base, ext = os.path.splitext(os.path.basename(input_path))
     output_path = os.path.join(TEMP_DIR, f"{base}_resized{ext}")
-    
     with Image.open(input_path) as img:
         resized_img = img.resize((width, height), Image.Resampling.LANCZOS)
-        if resized_img.mode in ("RGBA", "P"):
-            resized_img = resized_img.convert("RGB")
+        if resized_img.mode in ("RGBA", "P"): resized_img = resized_img.convert("RGB")
         resized_img.save(output_path)
     return output_path
 
-async def sync_resize_video_or_gif(input_path: str, width: int, height: int) -> str:
-    """Resizes a video or GIF using FFmpeg."""
+async def sync_resize_video_or_gif(input_path: str, width: int, height: int) -> tuple[str, str | None]:
+    """
+    Resizes a video or GIF using FFmpeg and returns paths to the output and a thumbnail.
+    """
     base, ext = os.path.splitext(os.path.basename(input_path))
     output_path = os.path.join(TEMP_DIR, f"{base}_resized{ext}")
+    thumb_path = os.path.join(TEMP_DIR, f"{base}_thumb.jpg")
     
-    command = f'ffmpeg -i "{input_path}" -vf "scale={width}:{height}" -y "{output_path}"'
+    command_resize = f'ffmpeg -i "{input_path}" -vf "scale={width}:{height}" -c:a copy -y "{output_path}"'
+    _, stderr, code = await run_command(command_resize)
+    if code != 0: raise RuntimeError(f"FFmpeg resize failed: {stderr}")
     
-    _, stderr, returncode = await run_command(command)
-    if returncode != 0:
-        raise RuntimeError(f"FFmpeg failed: {stderr}")
-    return output_path
+    command_thumb = f'ffmpeg -i "{output_path}" -ss 00:00:01 -vframes 1 -y "{thumb_path}"'
+    _, stderr, code = await run_command(command_thumb)
+    if code != 0:
+        thumb_path = None
+        
+    return output_path, thumb_path
 
 
 @bot.add_cmd(cmd="resize")
 async def resize_handler(bot: BOT, message: Message):
-    """
-    CMD: RESIZE
-    INFO: Resizes an image, GIF, or video.
-    USAGE: .resize [width]x[height] (reply to media)
-    """
     replied_msg = message.replied
     if not replied_msg or not replied_msg.media:
         await message.edit("Please reply to an image, GIF, or video to resize it.", del_in=ERROR_VISIBLE_DURATION)
@@ -74,23 +72,43 @@ async def resize_handler(bot: BOT, message: Message):
 
     progress_message = await message.reply("<code>Downloading media...</code>")
     
-    original_path, resized_path = "", ""
+    original_path, resized_path, thumb_path = "", "", None
+    temp_files = []
     try:
         original_path = await bot.download_media(replied_msg)
+        temp_files.append(original_path)
+        
         await progress_message.edit(f"<code>Resizing to {width}x{height}...</code>")
         
         if replied_msg.photo:
             resized_path = await asyncio.to_thread(sync_resize_image, original_path, width, height)
+            temp_files.append(resized_path)
             await bot.send_photo(message.chat.id, photo=resized_path, caption=f"Resized to: `{width}x{height}`")
         
         elif replied_msg.video or replied_msg.animation:
-            resized_path = await sync_resize_video_or_gif(original_path, width, height)
+            resized_path, thumb_path = await sync_resize_video_or_gif(original_path, width, height)
+            temp_files.extend([resized_path, thumb_path])
+            
             if replied_msg.video:
-                await bot.send_video(message.chat.id, video=resized_path, caption=f"Resized to: `{width}x{height}`")
+                await bot.send_video(
+                    message.chat.id, 
+                    video=resized_path, 
+                    caption=f"Resized to: `{width}x{height}`",
+                    width=width,
+                    height=height,
+                    thumb=thumb_path
+                )
             else:
-                await bot.send_animation(message.chat.id, animation=resized_path, caption=f"Resized to: `{width}x{height}`")
+                await bot.send_animation(
+                    message.chat.id, 
+                    animation=resized_path, 
+                    caption=f"Resized to: `{width}x{height}`",
+                    width=width,
+                    height=height,
+                    thumb=thumb_path
+                )
         else:
-            raise ValueError("Unsupported media type. Please reply to an image, GIF, or video.")
+            raise ValueError("Unsupported media type.")
         
         await progress_message.delete()
         await message.delete()
@@ -101,5 +119,5 @@ async def resize_handler(bot: BOT, message: Message):
         try: await message.delete()
         except: pass
     finally:
-        if original_path and os.path.exists(original_path): os.remove(original_path)
-        if resized_path and os.path.exists(resized_path): os.remove(resized_path)
+        for f in temp_files:
+            if f and os.path.exists(f): os.remove(f)
