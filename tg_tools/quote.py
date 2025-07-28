@@ -6,7 +6,7 @@ from pyrogram.types import Message
 
 from app import BOT, bot
 
-QUOTLY_BOT_ID = 705424444
+QUOTLY_BOT_ID = 1031952739
 QUOTLY_TIMEOUT = 15
 ERROR_VISIBLE_DURATION = 8
 
