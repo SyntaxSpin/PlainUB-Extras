@@ -10,6 +10,10 @@ TEMP_DIR = "temp_audio"
 os.makedirs(TEMP_DIR, exist_ok=True)
 ERROR_VISIBLE_DURATION = 8
 
+def safe_escape(text: str) -> str:
+    escaped_text = html.escape(str(text))
+    return escaped_text.replace("&#x27;", "’")
+
 def sync_gtts(text: str, lang: str) -> str:
     """
     Synchronous function to generate a speech file using gTTS.
@@ -60,7 +64,7 @@ async def tts_handler(bot: BOT, message: Message):
         await message.delete()
 
     except Exception as e:
-        await progress_message.edit(f"<b>Error:</b> Could not generate speech.\n<code>{html.escape(str(e))}</code>")
+        await progress_message.edit(f"<b>Error:</b> Could not generate speech.\n<code>{safe_escape(str(e))}</code>")
         await asyncio.sleep(ERROR_VISIBLE_DURATION)
         await progress_message.delete()
         try: await message.delete()
