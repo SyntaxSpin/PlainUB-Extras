@@ -38,7 +38,7 @@ async def quote_sticker_handler(bot: BOT, message: Message):
     if message.input and message.input.isdigit():
         count = min(int(message.input), 10)
 
-    progress_message = await message.reply(f"<i>Fetching {count} message(s)...</i> 🎨")
+    progress_message = await message.reply(f"Fetching {count} message(s)...")
     
     messages_to_quote = []
     current_id = message.replied.id
@@ -63,7 +63,7 @@ async def quote_sticker_handler(bot: BOT, message: Message):
         except: pass
         return
 
-    await progress_message.edit(f"Forwarding {len(messages_to_quote)} message(s) to @QuotLyBot... 🎨")
+    await progress_message.edit(f"Forwarding {len(messages_to_quote)} message(s) to @QuotLyBot...")
     
     try:
         await bot.forward_messages(
