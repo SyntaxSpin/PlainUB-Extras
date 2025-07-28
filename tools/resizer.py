@@ -31,21 +31,23 @@ def sync_resize_image(input_path: str, width: int, height: int) -> str:
     return output_path
 
 async def sync_resize_video_or_gif(input_path: str, width: int, height: int) -> tuple[str, str | None]:
-    """
-    Resizes a video or GIF using FFmpeg and returns paths to the output and a thumbnail.
-    """
     base, ext = os.path.splitext(os.path.basename(input_path))
     output_path = os.path.join(TEMP_DIR, f"{base}_resized{ext}")
     thumb_path = os.path.join(TEMP_DIR, f"{base}_thumb.jpg")
     
-    command_resize = f'ffmpeg -i "{input_path}" -vf "scale={width}:{height}" -c:a copy -y "{output_path}"'
+    command_resize = (
+        f'ffmpeg -i "{input_path}" '
+        f'-vf "scale={width}:{height}" '
+        f'-c:v libx264 -preset veryfast -crf 23 '
+        f'-c:a aac -b:a 128k '
+        f'-y "{output_path}"'
+    )
     _, stderr, code = await run_command(command_resize)
     if code != 0: raise RuntimeError(f"FFmpeg resize failed: {stderr}")
     
     command_thumb = f'ffmpeg -i "{output_path}" -ss 00:00:01 -vframes 1 -y "{thumb_path}"'
     _, stderr, code = await run_command(command_thumb)
-    if code != 0:
-        thumb_path = None
+    thumb_path = thumb_path if code == 0 else None
         
     return output_path, thumb_path
 
