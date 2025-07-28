@@ -23,6 +23,10 @@ WIKI_OBJS = {
     "uk": wikipediaapi.Wikipedia("uk", headers=HEADERS),
 }
 
+def safe_escape(text: str) -> str:
+    escaped_text = html.escape(str(text))
+    return escaped_text.replace("&#x27;", "’")
+
 def sync_wiki_search(lang: str, query: str) -> tuple[str, str, str] | None:
     """
     Synchronous function to search Wikipedia.
@@ -66,7 +70,7 @@ async def wiki_handler(bot: BOT, message: Message):
     else:
         query = message.input
 
-    progress_message = await message.reply(f"Searching Wikipedia ({lang}) for: <code>{html.escape(query)}</code>...")
+    progress_message = await message.reply(f"Searching Wikipedia ({lang}) for: <code>{safe_escape(query)}</code>...")
 
     try:
         result = await asyncio.to_thread(sync_wiki_search, lang, query)
@@ -75,8 +79,8 @@ async def wiki_handler(bot: BOT, message: Message):
             title, summary, url = result
             
             final_text = (
-                f"<b>📖 <a href='{url}'>{html.escape(title)}</a></b>\n\n"
-                f"{html.escape(summary)}"
+                f"<b>📖 <a href='{url}'>{safe_escape(title)}</a></b>\n\n"
+                f"{safe_escape(summary)}"
             )
             
             await progress_message.edit(
@@ -86,14 +90,14 @@ async def wiki_handler(bot: BOT, message: Message):
             await message.delete()
 
         else:
-            error_text = f"Could not find any Wikipedia page for <code>{html.escape(query)}</code> in '{lang}'."
+            error_text = f"Could not find any Wikipedia page for <code>{safe_escape(query)}</code> in '{lang}'."
             await progress_message.edit(error_text)
             await asyncio.sleep(ERROR_VISIBLE_DURATION)
             await progress_message.delete()
             await message.delete()
 
     except Exception as e:
-        error_text = f"<b>An error occurred:</b>\n<code>{html.escape(str(e))}</code>"
+        error_text = f"<b>An error occurred:</b>\n<code>{safe_escape(str(e))}</code>"
         await progress_message.edit(error_text)
         await asyncio.sleep(ERROR_VISIBLE_DURATION)
         await progress_message.delete()
