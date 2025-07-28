@@ -50,7 +50,6 @@ async def sync_download_media(file_id: str, file_type: str) -> str | None:
 
 def create_multiquote_image(messages_data: list) -> str:
     """Creates an image from a list of message data."""
-    
     try:
         name_font = ImageFont.truetype(FONT_BOLD_PATH, 24)
         text_font = ImageFont.truetype(FONT_REGULAR_PATH, 24)
@@ -62,26 +61,26 @@ def create_multiquote_image(messages_data: list) -> str:
     message_elements = []
 
     for msg_data in messages_data:
-        pfp_path = msg_data.get("pfp_path")
-        media_path = msg_data.get("media_path")
-        author_name = msg_data["author_name"]
         text = msg_data.get("text", "")
-        name_color = msg_data["name_color"]
-
-        current_height = 0
         
         lines = textwrap.wrap(text, width=32)
         wrapped_text = "\n".join(lines)
-        name_bbox = name_font.getbbox(author_name)
-        text_bbox = text_font.getbbox(wrapped_text, anchor='lt')
+        name_bbox = name_font.getbbox(msg_data["author_name"])
+        
+        text_bbox = text_font.getbbox("A")
+        if wrapped_text:
+            bbox = ImageDraw.Draw(Image.new('RGB', (1,1))).multiline_textbbox((0,0), wrapped_text, font=text_font)
+            text_height = bbox[3] - bbox[1]
+        else:
+            text_height = 0
 
-        bubble_height = (name_bbox[3] + 10) + (text_bbox[3] - text_bbox[1]) + PADDING * 2 if text else name_bbox[3] + PADDING
+        bubble_height = (name_bbox[3] + 10) + text_height + PADDING * 2 if text else name_bbox[3] + PADDING
         
         media_height = 0
         media_image = None
-        if media_path:
+        if msg_data.get("media_path"):
             try:
-                media_image = Image.open(media_path)
+                media_image = Image.open(msg_data["media_path"])
                 w, h = media_image.size
                 ratio = h / w
                 new_w = IMG_WIDTH - (PFP_SIZE + PADDING * 2)
@@ -95,9 +94,9 @@ def create_multiquote_image(messages_data: list) -> str:
         current_height = max(PFP_SIZE + PADDING, bubble_height)
         
         message_elements.append({
-            "pfp_path": pfp_path, "media_image": media_image, "media_height": media_height,
-            "author_name": author_name, "wrapped_text": wrapped_text, "name_color": name_color,
-            "height": current_height, "name_bbox": name_bbox, "text_bbox": text_bbox
+            "pfp_path": msg_data.get("pfp_path"), "media_image": media_image, "media_height": media_height,
+            "author_name": msg_data["author_name"], "wrapped_text": wrapped_text, "name_color": msg_data["name_color"],
+            "height": current_height, "name_bbox": name_bbox
         })
         total_height += current_height
 
@@ -130,8 +129,8 @@ def create_multiquote_image(messages_data: list) -> str:
         if element["media_image"]:
             media_y_offset = element["media_height"]
             final_image.paste(element["media_image"], (int(text_x), int(text_y + element["name_bbox"][3] + 10)))
-
-        draw.text((text_x, text_y + element["name_bbox"][3] + 10 + media_y_offset), element["wrapped_text"], font=text_font, fill=TEXT_COLOR, anchor='lt')
+        
+        draw.text((text_x, text_y + element["name_bbox"][3] + 10 + media_y_offset), element["wrapped_text"], font=text_font, fill=TEXT_COLOR)
         
         if pfp_image:
             final_image.paste(pfp_image, (PADDING // 2, int(current_y)), mask)
@@ -158,38 +157,37 @@ async def quote_sticker_handler(bot: BOT, message: Message):
     messages_to_quote_ids = range(message.replied.id, message.replied.id + count)
     messages = await bot.get_messages(message.chat.id, messages_to_quote_ids)
     
-    messages_data = []
-    download_tasks = []
-    temp_files = []
+    messages_data, download_tasks, temp_files = [], [], []
 
-    for msg in messages:
+    for i, msg in enumerate(messages):
         if not msg: continue
         
         author_user = msg.from_user or msg.sender_chat
         if not author_user: continue
 
         author_name = author_user.first_name if isinstance(author_user, User) else author_user.title
-        author_id = author_user.id
         
         msg_data = {
             "author_name": author_name,
-            "name_color": get_color_from_id(author_id),
+            "name_color": get_color_from_id(author_user.id),
             "text": msg.text or msg.caption or ""
         }
         
-        pfp_file_id = author_user.photo.big_file_id if author_user.photo else None
-        if pfp_file_id:
-            download_tasks.append(asyncio.create_task(sync_download_media(pfp_file_id, "pfp")))
-            msg_data["pfp_task_index"] = len(download_tasks) - 1
+        if i == 0 or messages[i-1].from_user.id != msg.from_user.id:
+            pfp_file_id = author_user.photo.big_file_id if author_user.photo else None
+            if pfp_file_id:
+                task = asyncio.create_task(sync_download_media(pfp_file_id, "pfp"))
+                download_tasks.append(task)
+                msg_data["pfp_task_index"] = len(download_tasks) - 1
         
         media_file_id, media_type = None, None
-        if msg.photo:
-            media_file_id, media_type = msg.photo.file_id, "photo"
-        elif msg.sticker:
+        if msg.photo: media_file_id, media_type = msg.photo.file_id, "photo"
+        elif msg.sticker and not msg.sticker.is_animated and not msg.sticker.is_video: 
             media_file_id, media_type = msg.sticker.file_id, "sticker"
         
         if media_file_id:
-            download_tasks.append(asyncio.create_task(sync_download_media(media_file_id, media_type)))
+            task = asyncio.create_task(sync_download_media(media_file_id, media_type))
+            download_tasks.append(task)
             msg_data["media_task_index"] = len(download_tasks) - 1
             
         messages_data.append(msg_data)
@@ -197,24 +195,28 @@ async def quote_sticker_handler(bot: BOT, message: Message):
     downloaded_files = await asyncio.gather(*download_tasks)
     temp_files.extend(f for f in downloaded_files if f)
 
+    pfp_map = {}
+    current_pfp_idx = 0
+    current_media_idx = len([t for t in download_tasks if "pfp" in str(t)])
+
     for i, msg_data in enumerate(messages_data):
+        author_id = (messages[i].from_user or messages[i].sender_chat).id
         if "pfp_task_index" in msg_data:
-            messages_data[i]["pfp_path"] = downloaded_files[msg_data["pfp_task_index"]]
+            pfp_map[author_id] = downloaded_files[current_pfp_idx]
+            current_pfp_idx += 1
+        
+        messages_data[i]["pfp_path"] = pfp_map.get(author_id)
+
         if "media_task_index" in msg_data:
-            messages_data[i]["media_path"] = downloaded_files[msg_data["media_task_index"]]
+            messages_data[i]["media_path"] = downloaded_files[current_media_idx]
+            current_media_idx += 1
+
 
     file_path = ""
     try:
-        if not messages_data:
-            raise ValueError("Could not find any valid messages to quote.")
-
+        if not messages_data: raise ValueError("Could not find any valid messages to quote.")
         file_path = await asyncio.to_thread(create_multiquote_image, messages_data)
-        
-        await bot.send_photo(
-            chat_id=message.chat.id,
-            photo=file_path,
-            reply_to_message_id=message.reply_to_message_id
-        )
+        await bot.send_photo(chat_id=message.chat.id, photo=file_path, reply_to_message_id=message.reply_to_message_id)
         await progress_message.delete()
         await message.delete()
 
@@ -227,7 +229,5 @@ async def quote_sticker_handler(bot: BOT, message: Message):
         except: pass
     finally:
         for f in temp_files:
-            if f and os.path.exists(f):
-                os.remove(f)
-        if file_path and os.path.exists(file_path):
-            os.remove(file_path)
+            if f and os.path.exists(f): os.remove(f)
+        if file_path and os.path.exists(file_path): os.remove(f)
