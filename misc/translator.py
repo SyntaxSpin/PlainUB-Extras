@@ -26,7 +26,7 @@ async def translate_handler(bot: BOT, message: Message):
     USAGE:
         .tr [to_lang] [text] (e.g., .tr pl Hello)
         .tr [to_lang] (reply to a message)
-    NOTE: Default target language is Polish (pl).
+    NOTE: Default target language is English (en).
     """
     
     target_lang = DEFAULT_TARGET_LANG
@@ -56,7 +56,7 @@ async def translate_handler(bot: BOT, message: Message):
         await message.delete()
         return
 
-    progress_message = await message.reply("<i>Translating...</i>")
+    progress_message = await message.reply("Translating...")
     
     try:
         translated_text, detected_source = await asyncio.to_thread(
