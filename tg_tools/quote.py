@@ -38,7 +38,7 @@ async def quote_sticker_handler(bot: BOT, message: Message):
     if message.input and message.input.isdigit():
         count = min(int(message.input), 10)
 
-    progress_message = await message.reply(f"<i>Forwarding {count} message(s) to @QuotLyBot...</i> 🎨")
+    progress_message = await message.reply(f"Forwarding {count} message(s) to @QuotLyBot...")
     
     message_ids = range(message.replied.id, message.replied.id + count)
     
