@@ -25,7 +25,7 @@ async def joke_handler(bot: BOT, message: Message):
     INFO: Tells you a random joke.
     """
     
-    progress_message = await message.reply("Finding a good joke... 😂")
+    progress_message = await message.reply("Finding a good joke...")
     
     try:
         joke_data = await asyncio.to_thread(sync_get_joke)
