@@ -40,7 +40,7 @@ async def wiki_handler(bot: BOT, message: Message):
         await message.delete()
         return
 
-    progress_message = await message.reply(f"Searching Wikipedia for: <code>{safe_escape(query)}</code>...")
+    progress_message = await message.reply(f"<code>Searching Wikipedia for: {safe_escape(query)}...</code>")
 
     try:
         result = await asyncio.to_thread(sync_wiki_search, query)
