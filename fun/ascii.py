@@ -21,7 +21,9 @@ async def ascii_handler(bot: BOT, message: Message):
     
     text_to_convert = message.input
     if not text_to_convert:
-        await message.edit("Please provide text to convert. Usage: `.ascii Hello`", del_in=ERROR_VISIBLE_DURATION)
+        await message.edit("Please provide text to convert. Usage: `.ascii Hello`")
+        await asyncio.sleep(ERROR_VISIBLE_DURATION)
+        await message.delete()
         return
 
     try:
@@ -29,10 +31,15 @@ async def ascii_handler(bot: BOT, message: Message):
         final_text = f"<pre language=ascii>{safe_escape(ascii_text)}</pre>"
         
         if len(final_text) > 4096:
-            await message.edit("The resulting ASCII art is too long to be sent.", del_in=ERROR_VISIBLE_DURATION)
+            await message.edit("The resulting ASCII art is too long to be sent.")
+            await asyncio.sleep(ERROR_VISIBLE_DURATION)
+            await message.delete()
             return
 
-        await message.edit(final_text)
+        await message.reply(final_text)
+        await message.delete()
 
     except Exception as e:
-        await message.edit(f"<b>Error:</b> Could not generate ASCII art.\n<code>{safe_escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
+        await message.edit(f"<b>Error:</b> Could not generate ASCII art.\n<code>{safe_escape(str(e))}</code>")
+        await asyncio.sleep(ERROR_VISIBLE_DURATION)
+        await message.delete()
