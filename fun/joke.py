@@ -36,7 +36,6 @@ async def joke_handler(bot: BOT, message: Message):
         if not setup or not punchline:
             raise ValueError("Invalid joke format received.")
             
-        # --- LOGIKA SUKCESU ---
         await progress_message.edit(f"<b>{html.escape(setup)}</b>")
         await asyncio.sleep(3)
         await progress_message.edit(
@@ -45,7 +44,6 @@ async def joke_handler(bot: BOT, message: Message):
         await message.delete()
 
     except Exception as e:
-        # --- LOGIKA BŁĘDU ---
         error_text = f"<b>Error:</b> Could not fetch a joke.\n<code>{html.escape(str(e))}</code>"
         await progress_message.edit(error_text)
         await asyncio.sleep(ERROR_VISIBLE_DURATION)
