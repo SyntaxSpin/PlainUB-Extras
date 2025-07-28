@@ -31,7 +31,7 @@ async def cowsay_handler(bot: BOT, message: Message):
         return
 
     cow_text = cowsay.cow(text_to_say)
-    final_text = f"<pre language=cowsay>{safe_escape(cow_text)}</pre>"
+    final_text = f"<code>{safe_escape(cow_text)}</code>"
 
     await message.reply(final_text)
     await message.delete()
