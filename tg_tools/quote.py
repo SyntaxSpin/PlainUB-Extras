@@ -70,7 +70,7 @@ async def quote_sticker_handler(bot: BOT, message: Message):
     elif message.replied.sender_chat:
         author = message.replied.sender_chat.title
 
-    progress_message = await message.reply("<i>Creating image...</i> 🎨")
+    progress_message = await message.reply("Creating image... 🎨")
     
     file_path = ""
     try:
