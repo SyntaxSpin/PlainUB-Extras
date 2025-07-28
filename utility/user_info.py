@@ -8,7 +8,7 @@ from app import BOT, bot
 
 def safe_escape(text: str) -> str:
     escaped_text = html.escape(str(text))
-    return escaped_text.replace("'", "’")
+    return escaped_text.replace("&#x27;", "’")
 
 def get_user_status(user: User) -> str:
     if not user.status:
