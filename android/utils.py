@@ -25,7 +25,7 @@ async def get_android_versions(bot, message: Message, owner: str, repo: str, sho
         if not releases_data:
             raise ValueError("No releases found for this repository.")
 
-        final_text = [f"<b>📦 Latest {display_name} Releases:</b>\n"]
+        final_text = [f"<b>📦 Latest {display_name} Releases:</b>"]
 
         if show_both:
             stable = next((r for r in releases_data if not r['prerelease']), None)
