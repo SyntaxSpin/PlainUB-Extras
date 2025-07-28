@@ -36,7 +36,7 @@ async def shortlink_handler(bot: BOT, message: Message):
         await message.delete()
         return
 
-    progress_message = await message.reply("Shortening link...")
+    progress_message = await message.reply("<code>Shortening link...</code>")
     
     try:
         shortened_url = await asyncio.to_thread(sync_shorten, url_to_shorten)
