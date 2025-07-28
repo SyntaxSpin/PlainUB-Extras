@@ -9,7 +9,7 @@ from app import BOT, bot
 
 TEMP_DIR = "temp_stickers"
 os.makedirs(TEMP_DIR, exist_ok=True)
-FONT_PATH = "assets/Roboto-Regular.ttf" 
+FONT_PATH = "app/modules/Roboto-Regular.ttf" 
 FONT_SIZE = 40
 AUTHOR_FONT_SIZE = 30
 IMG_WIDTH, IMG_HEIGHT = 512, 512
