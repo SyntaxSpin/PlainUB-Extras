@@ -18,7 +18,6 @@ FONT_BOLD_PATH = "app/modules/NotoSans-Bold.ttf"
 BUBBLE_COLOR = (24, 35, 43, 220)
 TEXT_COLOR = (255, 255, 255, 255)
 
-IMG_WIDTH = 512
 PFP_SIZE = 64
 PADDING = 20
 ERROR_VISIBLE_DURATION = 8
@@ -33,7 +32,21 @@ def get_color_from_id(user_id: int) -> tuple[int, int, int, int]:
     rgb_int = tuple(int(c * 255) for c in rgb_float)
     return (*rgb_int, 255)
 
-def create_telegram_quote_image(pfp_path: str | None, name: str, text: str, name_color: tuple) -> str:
+def sanitize_text_for_font(text: str, font: ImageFont.FreeTypeFont) -> str:
+    """Replaces characters not supported by the font with a placeholder."""
+    sanitized = []
+    for char in text:
+        try:
+            font.getlength(char)
+            sanitized.append(char)
+        except (TypeError, ValueError):
+            sanitized.append("□")
+    return "".join(sanitized)
+
+def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: tuple) -> str:
+    canvas = Image.new('RGBA', (1024, 1024), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(canvas)
+
     try:
         name_font = ImageFont.truetype(FONT_BOLD_PATH, 24)
         text_font = ImageFont.truetype(FONT_REGULAR_PATH, 24)
@@ -41,44 +54,44 @@ def create_telegram_quote_image(pfp_path: str | None, name: str, text: str, name
         name_font = ImageFont.load_default()
         text_font = ImageFont.load_default()
 
-    lines = textwrap.wrap(text, width=32)
+    sanitized_name = sanitize_text_for_font(name, name_font)
+
+    bubble_x_start = PFP_SIZE + PADDING
+    text_area_width = 512 - bubble_x_start - PADDING
+    
+    lines = textwrap.wrap(text, width=35)
     wrapped_text = "\n".join(lines)
     
-    name_height = name_font.getbbox(name)[3] - name_font.getbbox(name)[1]
-    text_height = 0
-    if wrapped_text:
-        line_height = text_font.getbbox("A")[3] - text_font.getbbox("A")[1] + 5
-        text_height = line_height * len(lines)
+    name_bbox = draw.textbbox((0, 0), sanitized_name, font=name_font)
+    text_bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=text_font)
 
-    bubble_content_height = name_height + text_height + 10
-    bubble_height = bubble_content_height + PADDING * 2
-    final_height = max(PFP_SIZE + PADDING, bubble_height) + PADDING
+    bubble_width = max(name_bbox[2], text_bbox[2]) + PADDING * 2
+    bubble_height = (name_bbox[3] - name_bbox[1]) + (text_bbox[3] - text_bbox[1]) + PADDING * 2 + 10
     
-    final_image = Image.new('RGBA', (IMG_WIDTH, int(final_height)), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(final_image)
+    draw.rounded_rectangle((bubble_x_start, PADDING, bubble_x_start + bubble_width, PADDING + bubble_height), radius=20, fill=BUBBLE_COLOR)
     
-    bubble_x0, bubble_y0 = PFP_SIZE + PADDING, PADDING
-    draw.rounded_rectangle((bubble_x0, bubble_y0, IMG_WIDTH - PADDING, bubble_y0 + bubble_height), radius=20, fill=BUBBLE_COLOR)
-    
-    text_x, text_y = bubble_x0 + PADDING, bubble_y0 + PADDING
-    draw.text((text_x, text_y), name, font=name_font, fill=name_color)
-    draw.text((text_x, text_y + name_height + 10), wrapped_text, font=text_font, fill=TEXT_COLOR)
+    text_x = bubble_x_start + PADDING
+    text_y = PADDING + PADDING
+    draw.text((text_x, text_y), sanitized_name, font=name_font, fill=name_color)
+    draw.text((text_x, text_y + name_bbox[3] + 10), wrapped_text, font=text_font, fill=TEXT_COLOR)
     
     if pfp_path:
         try:
             with Image.open(pfp_path).convert("RGBA") as pfp_image:
                 pfp_image = pfp_image.resize((PFP_SIZE, PFP_SIZE), Image.Resampling.LANCZOS)
                 mask = Image.new('L', (PFP_SIZE, PFP_SIZE), 0)
-                draw_mask = ImageDraw.Draw(mask)
-                draw_mask.ellipse((0, 0, PFP_SIZE, PFP_SIZE), fill=255)
-                final_image.paste(pfp_image, (PADDING // 2, PADDING), mask)
+                ImageDraw.Draw(mask).ellipse((0, 0, PFP_SIZE, PFP_SIZE), fill=255)
+                canvas.paste(pfp_image, (PADDING // 2, PADDING), mask)
         except Exception:
             pass
 
-    output_path = os.path.join(TEMP_DIR, f"quote_{hash(text + name)}.png")
-    final_image.save(output_path, 'PNG')
-    return output_path
+    bbox = canvas.getbbox()
+    if bbox:
+        canvas = canvas.crop(bbox)
 
+    output_path = os.path.join(TEMP_DIR, f"quote_{hash(text + name)}.png")
+    canvas.save(output_path, 'PNG')
+    return output_path
 
 @bot.add_cmd(cmd=["q", "quote"])
 async def quote_sticker_handler(bot: BOT, message: Message):
@@ -96,7 +109,7 @@ async def quote_sticker_handler(bot: BOT, message: Message):
 
     author_name = author_user.first_name if isinstance(author_user, User) else author_user.title
     
-    progress_message = await message.reply("Creating image... 🎨")
+    progress_message = await message.reply("<i>Creating image...</i> 🎨")
     
     pfp_path, file_path = None, ""
     temp_files = []
@@ -113,7 +126,7 @@ async def quote_sticker_handler(bot: BOT, message: Message):
         author_color = get_color_from_id(author_user.id)
         
         file_path = await asyncio.to_thread(
-            create_telegram_quote_image, 
+            create_quote_image, 
             pfp_path, author_name, text_to_quote, author_color
         )
         temp_files.append(file_path)
