@@ -7,9 +7,8 @@ from app import BOT, bot
 
 ERROR_VISIBLE_DURATION = 8
 WIKI_LANG = "en"
-HEADERS = {"User-Agent": "MyCoolUserBot/1.0 (https://github.com/telegram)"}
-
-wiki_api = wikipediaapi.Wikipedia(language=WIKI_LANG, headers=HEADERS)
+USER_AGENT = "MyCoolUserBot/1.0 (https://github.com/telegram)"
+wiki_api = wikipediaapi.Wikipedia(language=WIKI_LANG, user_agent=USER_AGENT)
 
 def safe_escape(text: str) -> str:
     escaped_text = html.escape(str(text))
