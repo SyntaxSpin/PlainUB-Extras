@@ -5,3 +5,4 @@ deep-translator
 cowsay
 pyfiglet
 gTTS
+Pillow
