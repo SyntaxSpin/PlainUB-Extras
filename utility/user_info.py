@@ -2,7 +2,7 @@ import html
 from datetime import datetime
 
 from pyrogram.enums import UserStatus
-from pyrogram.types import Message, User
+from pyrogram.types import LinkPreviewOptions, Message, User
 
 from app import BOT, bot
 
@@ -110,5 +110,5 @@ async def info_handler(bot: BOT, message: Message):
     else:
         await progress.edit(
             final_text,
-            disable_web_page_preview=True
+            link_preview_options=LinkPreviewOptions(is_disabled=True)
         )
