@@ -1,3 +1,4 @@
 googlesearch-python
 requests
 wikipedia-api
+deep-translator
