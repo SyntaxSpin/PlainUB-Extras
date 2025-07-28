@@ -18,13 +18,10 @@ async def cowsay_handler(bot: BOT, message: Message):
     elif message.replied and message.replied.text:
         text_to_say = message.replied.text
     else:
-        await message.edit("What should the cow say? Provide text or reply to a message.")
+        await message.edit("What should the cow say? Provide text or reply to a message.", del_in=8)
         return
 
-    # Generate the cowsay text
     cow_text = cowsay.cow(text_to_say)
-    
-    # Format it for Telegram's monospace font
     final_text = f"<pre language=cowsay>{html.escape(cow_text)}</pre>"
-    
+
     await message.edit(final_text)
