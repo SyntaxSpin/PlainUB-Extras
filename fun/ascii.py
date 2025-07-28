@@ -28,7 +28,7 @@ async def ascii_handler(bot: BOT, message: Message):
 
     try:
         ascii_text = pyfiglet.figlet_format(text_to_convert)
-        final_text = f"<pre language=ascii>{safe_escape(ascii_text)}</pre>"
+        final_text = f"<code>{safe_escape(ascii_text)}</code>"
         
         if len(final_text) > 4096:
             await message.edit("The resulting ASCII art is too long to be sent.")
