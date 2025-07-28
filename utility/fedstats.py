@@ -17,8 +17,8 @@ FED_BOTS_TO_QUERY = [
 
 def safe_escape(text: str) -> str:
     escaped_text = html.escape(str(text))
-    return escaped_text.replace("'", "’")
-
+    return escaped_text.replace("&#x27;", "’")
+    
 def parse_text_response(response: Message) -> str:
     bot_name = response.from_user.first_name
     text = response.text
