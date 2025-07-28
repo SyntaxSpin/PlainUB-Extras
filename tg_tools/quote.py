@@ -33,16 +33,6 @@ def get_color_from_id(user_id: int) -> tuple[int, int, int, int]:
     rgb_int = tuple(int(c * 255) for c in rgb_float)
     return (*rgb_int, 255)
 
-def sanitize_text_for_font(text: str, font: ImageFont.FreeTypeFont) -> str:
-    """Bardziej niezawodna funkcja do czyszczenia tekstu."""
-    sanitized_text = ""
-    for char in text:
-        if font.getmask(char).getbbox() is not None:
-            sanitized_text += char
-        else:
-            sanitized_text += "□"
-    return sanitized_text
-
 def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: tuple) -> str:
     try:
         name_font = ImageFont.truetype(FONT_BOLD_PATH, 24)
@@ -50,15 +40,13 @@ def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: t
     except Exception:
         name_font = ImageFont.load_default()
         text_font = ImageFont.load_default()
-
-    sanitized_name = sanitize_text_for_font(name, name_font)
     
+    # Krok 1: Obliczanie wymiarów
     temp_draw = ImageDraw.Draw(Image.new('RGB', (1,1)))
-    
     lines = textwrap.wrap(text, width=35)
     wrapped_text = "\n".join(lines)
     
-    name_bbox = temp_draw.textbbox((0, 0), sanitized_name, font=name_font)
+    name_bbox = temp_draw.textbbox((0, 0), name, font=name_font)
     text_bbox = temp_draw.multiline_textbbox((0, 0), wrapped_text, font=text_font)
 
     name_width, name_height = name_bbox[2] - name_bbox[0], name_bbox[3] - name_bbox[1]
@@ -73,8 +61,9 @@ def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: t
     final_width = content_width + CANVAS_PADDING * 2
     final_height = content_height + CANVAS_PADDING * 2
     
-    final_image = Image.new('RGBA', (int(final_width), int(final_height)), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(final_image)
+    base_layer = Image.new('RGBA', (int(final_width), int(final_height)), (0, 0, 0, 0))
+    content_layer = Image.new('RGBA', base_layer.size, (255, 255, 255, 0))
+    draw = ImageDraw.Draw(content_layer)
 
     pfp_x, pfp_y = CANVAS_PADDING, CANVAS_PADDING
     bubble_x0, bubble_y0 = pfp_x + PFP_SIZE + PADDING, pfp_y
@@ -83,8 +72,10 @@ def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: t
     
     text_x = bubble_x0 + PADDING
     text_y = bubble_y0 + PADDING
-    draw.text((text_x, text_y), sanitized_name, font=name_font, fill=name_color)
+    draw.text((text_x, text_y), name, font=name_font, fill=name_color)
     draw.text((text_x, text_y + name_height + 10), wrapped_text, font=text_font, fill=TEXT_COLOR)
+    
+    final_image = Image.alpha_composite(base_layer, content_layer)
     
     if pfp_path:
         try:
@@ -117,7 +108,7 @@ async def quote_sticker_handler(bot: BOT, message: Message):
 
     author_name = author_user.first_name if isinstance(author_user, User) else author_user.title
     
-    progress_message = await message.reply("Creating image... 🎨")
+    progress_message = await message.reply("<i>Creating image...</i> 🎨")
     
     pfp_path, file_path = None, ""
     temp_files = []
