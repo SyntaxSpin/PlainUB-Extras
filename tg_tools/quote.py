@@ -1,5 +1,3 @@
-# File: app/modules/fun/quote_sticker.py
-
 import os
 import textwrap
 import html
