@@ -16,7 +16,7 @@ if DOTENV_PATH.is_file():
     load_dotenv(dotenv_path=DOTENV_PATH)
 
 ACRCLOUD_CONFIG = {
-    'host': os.getenv("ACR_HOST", "identify-eu-west-1.acrcloud.com"),
+    'host': 'identify-eu-west-1.acrcloud.com',
     'access_key': os.getenv("ACR_ACCESS_KEY"),
     'access_secret': os.getenv("ACR_ACCESS_SECRET"),
     'recognize_type': 'audio',
