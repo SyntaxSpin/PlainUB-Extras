@@ -17,7 +17,7 @@ async def get_android_versions(bot, message: Message, owner: str, repo: str, sho
     if repo == "KernelSU" and owner == "KernelSU-Next":
         display_name = "KernelSU-Next"
 
-    progress_message = await message.reply(f"Checking for latest <b>{display_name}</b> releases...")
+    progress_message = await message.reply(f"<code>Checking for latest</code> <b>{display_name}</b> <code>releases...</code>")
     
     try:
         releases_data = await asyncio.to_thread(sync_get_releases, owner, repo)
