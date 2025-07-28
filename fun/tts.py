@@ -49,7 +49,7 @@ async def tts_handler(bot: BOT, message: Message):
         await message.edit("The message contains no text to convert.", del_in=ERROR_VISIBLE_DURATION)
         return
 
-    progress_message = await message.reply("Converting text to speech... 🎤")
+    progress_message = await message.reply("Converting text to speech...")
     
     file_path = ""
     try:
