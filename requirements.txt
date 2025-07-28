@@ -6,4 +6,3 @@ cowsay
 pyfiglet
 gTTS
 Pillow
-speedtest-cli
