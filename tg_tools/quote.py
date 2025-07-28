@@ -22,6 +22,7 @@ TEXT_COLOR = (255, 255, 255, 255)
 PFP_SIZE = 64
 PADDING = 15
 CANVAS_PADDING = 10
+SUPERSAMPLE_FACTOR = 4
 ERROR_VISIBLE_DURATION = 8
 
 if not os.path.exists(FONT_REGULAR_PATH) or not os.path.exists(FONT_BOLD_PATH):
@@ -34,10 +35,49 @@ def get_color_from_id(user_id: int) -> tuple[int, int, int, int]:
     rgb_int = tuple(int(c * 255) for c in rgb_float)
     return (*rgb_int, 255)
 
-def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: tuple) -> str:
+def get_initials(name: str) -> str:
+    """Pobiera inicjały z imienia i nazwiska."""
+    parts = name.split()
+    if len(parts) >= 2:
+        return (parts[0][0] + parts[-1][0]).upper()
+    elif parts:
+        return parts[0][0].upper()
+    return "?"
+
+def create_stock_pfp(name: str, user_id: int) -> str:
+    """Tworzy stockowy, okrągły awatar z inicjałami."""
+    size_ss = PFP_SIZE * SUPERSAMPLE_FACTOR
+    font_size_ss = int(size_ss * 0.45)
+    
+    image = Image.new('RGBA', (size_ss, size_ss), (0,0,0,0))
+    draw = ImageDraw.Draw(image)
+    
+    bg_color = get_color_from_id(user_id)
+    initials = get_initials(name)
+    
+    draw.ellipse((0, 0, size_ss, size_ss), fill=bg_color)
+    
     try:
-        name_font = ImageFont.truetype(FONT_BOLD_PATH, 24)
-        text_font = ImageFont.truetype(FONT_REGULAR_PATH, 24)
+        font = ImageFont.truetype(FONT_BOLD_PATH, font_size_ss)
+    except Exception:
+        font = ImageFont.load_default()
+
+    draw.text((size_ss / 2, size_ss / 2), initials, font=font, fill=(255, 255, 255), anchor="mm")
+    
+    final_image = image.resize((PFP_SIZE, PFP_SIZE), Image.Resampling.LANCZOS)
+    
+    path = os.path.join(TEMP_DIR, f"stock_pfp_{user_id}.png")
+    final_image.save(path, 'PNG')
+    return path
+
+def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: tuple) -> str:
+    pfp_size_ss = PFP_SIZE * SUPERSAMPLE_FACTOR
+    padding_ss = PADDING * SUPERSAMPLE_FACTOR
+    canvas_padding_ss = CANVAS_PADDING * SUPERSAMPLE_FACTOR
+    
+    try:
+        name_font = ImageFont.truetype(FONT_BOLD_PATH, 24 * SUPERSAMPLE_FACTOR)
+        text_font = ImageFont.truetype(FONT_REGULAR_PATH, 24 * SUPERSAMPLE_FACTOR)
     except Exception:
         name_font = ImageFont.load_default()
         text_font = ImageFont.load_default()
@@ -52,41 +92,41 @@ def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: t
     name_width, name_height = name_bbox[2] - name_bbox[0], name_bbox[3] - name_bbox[1]
     text_width, text_height = text_bbox[2] - text_bbox[0], text_bbox[3] - text_bbox[1]
     
-    bubble_width = max(name_width, text_width) + PADDING * 2
-    bubble_height = name_height + text_height + PADDING * 2 + (10 if text else 0)
+    bubble_width = max(name_width, text_width) + padding_ss * 2
+    bubble_height = name_height + text_height + padding_ss * 2 + (10 * SUPERSAMPLE_FACTOR if text else 0)
     
-    content_width = PFP_SIZE + PADDING + bubble_width
-    content_height = max(PFP_SIZE, bubble_height)
+    content_width = pfp_size_ss + padding_ss + bubble_width
+    content_height = max(pfp_size_ss, bubble_height)
     
-    final_width = content_width + CANVAS_PADDING * 2
-    final_height = content_height + CANVAS_PADDING * 2
+    final_width_ss = content_width + canvas_padding_ss * 2
+    final_height_ss = content_height + canvas_padding_ss * 2
     
-    final_image = Image.new('RGBA', (int(final_width), int(final_height)), CANVAS_BG_COLOR)
-    draw = ImageDraw.Draw(final_image)
+    large_image = Image.new('RGBA', (int(final_width_ss), int(final_height_ss)), CANVAS_BG_COLOR)
+    draw = ImageDraw.Draw(large_image)
 
-    pfp_x, pfp_y = CANVAS_PADDING, CANVAS_PADDING
-    bubble_x0, bubble_y0 = pfp_x + PFP_SIZE + PADDING, pfp_y
+    pfp_x, pfp_y = canvas_padding_ss, canvas_padding_ss
+    bubble_x0, bubble_y0 = pfp_x + pfp_size_ss + padding_ss, pfp_y
     
-    draw.rounded_rectangle((bubble_x0, bubble_y0, bubble_x0 + bubble_width, bubble_y0 + bubble_height), radius=20, fill=BUBBLE_COLOR)
+    draw.rounded_rectangle((bubble_x0, bubble_y0, bubble_x0 + bubble_width, bubble_y0 + bubble_height), radius=20 * SUPERSAMPLE_FACTOR, fill=BUBBLE_COLOR)
     
-    text_x = bubble_x0 + PADDING
-    text_y = bubble_y0 + PADDING
+    text_x = bubble_x0 + padding_ss
+    text_y = bubble_y0 + padding_ss
     draw.text((text_x, text_y), name, font=name_font, fill=name_color)
-    draw.text((text_x, text_y + name_height + 10), wrapped_text, font=text_font, fill=TEXT_COLOR)
+    draw.text((text_x, text_y + name_height + 10 * SUPERSAMPLE_FACTOR), wrapped_text, font=text_font, fill=TEXT_COLOR)
     
     if pfp_path:
         try:
             with Image.open(pfp_path).convert("RGBA") as pfp_image:
-                pfp_image = pfp_image.resize((PFP_SIZE, PFP_SIZE), Image.Resampling.LANCZOS)
-                
-                supersample = 4
-                mask = Image.new('L', (PFP_SIZE * supersample, PFP_SIZE * supersample), 0)
-                ImageDraw.Draw(mask).ellipse((0, 0, PFP_SIZE * supersample, PFP_SIZE * supersample), fill=255)
-                mask = mask.resize((PFP_SIZE, PFP_SIZE), Image.Resampling.LANCZOS)
-                
-                final_image.paste(pfp_image, (pfp_x, pfp_y), mask)
+                pfp_image = pfp_image.resize((pfp_size_ss, pfp_size_ss), Image.Resampling.LANCZOS)
+                mask = Image.new('L', pfp_image.size, 0)
+                ImageDraw.Draw(mask).ellipse((0, 0, pfp_size_ss, pfp_size_ss), fill=255)
+                large_image.paste(pfp_image, (pfp_x, pfp_y), mask)
         except Exception:
             pass
+
+    final_width = int(final_width_ss / SUPERSAMPLE_FACTOR)
+    final_height = int(final_height_ss / SUPERSAMPLE_FACTOR)
+    final_image = large_image.resize((final_width, final_height), Image.Resampling.LANCZOS)
 
     output_path = os.path.join(TEMP_DIR, f"quote_{hash(text + name)}.png")
     final_image.save(output_path, 'PNG')
@@ -109,7 +149,7 @@ async def quote_sticker_handler(bot: BOT, message: Message):
 
     author_name = author_user.first_name if isinstance(author_user, User) else author_user.title
     
-    progress_message = await message.reply("Creating image... 🎨")
+    progress_message = await message.reply("Creating image...")
     
     pfp_path, file_path = None, ""
     temp_files = []
@@ -120,8 +160,11 @@ async def quote_sticker_handler(bot: BOT, message: Message):
                 author_user.photo.big_file_id, 
                 file_name=os.path.join(TEMP_DIR, f"pfp_{author_user.id}.jpg")
             )
-            if pfp_path:
-                temp_files.append(pfp_path)
+        else:
+            pfp_path = await asyncio.to_thread(create_stock_pfp, author_name, author_user.id)
+        
+        if pfp_path:
+            temp_files.append(pfp_path)
 
         author_color = get_color_from_id(author_user.id)
         
