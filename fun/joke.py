@@ -6,6 +6,7 @@ from pyrogram.types import Message
 from app import BOT, bot
 
 API_URL = "https://official-joke-api.appspot.com/random_joke"
+ERROR_VISIBLE_DURATION = 8
 
 def safe_escape(text: str) -> str:
     escaped_text = html.escape(str(text))
@@ -22,10 +23,9 @@ async def joke_handler(bot: BOT, message: Message):
     """
     CMD: JOKE
     INFO: Tells you a random joke.
-    USAGE: .joke
     """
     
-    await message.edit("Finding a good joke... 😂")
+    progress_message = await message.reply("Finding a good joke... 😂")
     
     try:
         joke_data = await asyncio.to_thread(sync_get_joke)
@@ -34,15 +34,23 @@ async def joke_handler(bot: BOT, message: Message):
         punchline = joke_data.get("punchline")
         
         if not setup or not punchline:
-            raise ValueError("Invalid joke format received from API.")
+            raise ValueError("Invalid joke format received.")
             
-        await message.edit(f"<b>{html.escape(setup)}</b>")
+        # --- LOGIKA SUKCESU ---
+        await progress_message.edit(f"<b>{html.escape(setup)}</b>")
         await asyncio.sleep(3)
-        await message.edit(
+        await progress_message.edit(
             f"<b>{html.escape(setup)}</b>\n\n<i>...{html.escape(punchline)}</i>"
         )
+        await message.delete()
 
     except Exception as e:
-        await message.edit(f"<b>Error:</b> Could not fetch a joke.\n<code>{html.escape(str(e))}</code>")
-        await asyncio.sleep(5)
-        await message.delete()
+        # --- LOGIKA BŁĘDU ---
+        error_text = f"<b>Error:</b> Could not fetch a joke.\n<code>{html.escape(str(e))}</code>"
+        await progress_message.edit(error_text)
+        await asyncio.sleep(ERROR_VISIBLE_DURATION)
+        await progress_message.delete()
+        try:
+            await message.delete()
+        except Exception:
+            pass
