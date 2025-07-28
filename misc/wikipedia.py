@@ -47,7 +47,7 @@ async def wiki_handler(bot: BOT, message: Message):
     """
     CMD: WIKI | WIKIPEDIA
     INFO: Searches for a page on Wikipedia.
-    USAGE: .wiki [lang] [query] or .wiki [query] (defaults to Polish)
+    USAGE: .wiki [lang] [query] or .wiki [query] (defaults to English)
     """
     
     if not message.input:
