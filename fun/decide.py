@@ -18,6 +18,6 @@ async def decide_handler(bot: BOT, message: Message):
     """
     
     decision = random.choice(DECIDE_RESPONSES)
-    final_text = f"🤔 <b>My decision is:</b>\n\n» <i>{decision}</i>"
+    final_text = f"<b>My decision is:</b>\n\n» <i>{decision}</i>"
 
     await message.edit(final_text)
