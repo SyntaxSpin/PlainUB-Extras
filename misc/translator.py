@@ -60,7 +60,7 @@ async def translate_handler(bot: BOT, message: Message):
         await message.delete()
         return
 
-    progress_message = await message.reply("Translating...")
+    progress_message = await message.reply("<code>Translating...</code>")
     
     try:
         translated_text, detected_source = await asyncio.to_thread(
