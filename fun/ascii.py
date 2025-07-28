@@ -7,10 +7,6 @@ from app import BOT, bot
 
 ERROR_VISIBLE_DURATION = 8
 
-def safe_escape(text: str) -> str:
-    escaped_text = html.escape(str(text))
-    return escaped_text.replace("&#x27;", "’")
-
 @bot.add_cmd(cmd="ascii")
 async def ascii_handler(bot: BOT, message: Message):
     """
@@ -35,7 +31,7 @@ async def ascii_handler(bot: BOT, message: Message):
 
     try:
         ascii_art = figlet_format(text_to_convert, font='standard')
-        final_text = f"<code>{safe_escape(ascii_art)}</code>"
+        final_text = f"<code>{ascii_art}</code>"
 
         await progress_message.edit(final_text)
         await message.delete()
