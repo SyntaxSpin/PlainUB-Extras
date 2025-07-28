@@ -8,6 +8,10 @@ from app import BOT, bot
 ERROR_VISIBLE_DURATION = 8
 DEFAULT_TARGET_LANG = "en"
 
+def safe_escape(text: str) -> str:
+    escaped_text = html.escape(str(text))
+    return escaped_text.replace("&#x27;", "’")
+
 def sync_translate(text: str, target: str) -> tuple[str, str]:
     """
     Synchronous function to perform translation with auto-detection.
@@ -67,8 +71,8 @@ async def translate_handler(bot: BOT, message: Message):
         
         final_text = (
             f"<b>🌍 Translation | {detected_source} → {target_lang}</b>\n\n"
-            f"<b>Input:</b>\n<blockquote expandable>{html.escape(text_to_translate)}</blockquote>\n"
-            f"<b>Output:</b>\n<blockquote expandable>{html.escape(translated_text)}</blockquote>"
+            f"<b>Input:</b>\n<blockquote expandable>{safe_escape(text_to_translate)}</blockquote>\n"
+            f"<b>Output:</b>\n<blockquote expandable>{safe_escape(translated_text)}</blockquote>"
         )
         
         await progress_message.edit(
@@ -79,9 +83,9 @@ async def translate_handler(bot: BOT, message: Message):
 
     except Exception as e:
         if "invalid destination language" in str(e).lower():
-            error_text = f"<b>Invalid language code:</b> <code>{html.escape(target_lang)}</code>"
+            error_text = f"<b>Invalid language code:</b> <code>{safe_escape(target_lang)}</code>"
         else:
-            error_text = f"<b>An error occurred:</b>\n<code>{html.escape(str(e))}</code>"
+            error_text = f"<b>An error occurred:</b>\n<code>{safe_escape(str(e))}</code>"
             
         await progress_message.edit(error_text)
         await asyncio.sleep(ERROR_VISIBLE_DURATION)
