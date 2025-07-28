@@ -55,6 +55,18 @@ If you're deploying manually (without `EXTRA_MODULES_REPO`), you can also instal
 
 ---
 
+## 📦 Install Requirements
+
+Some modules may require additional Python packages. To install all necessary dependencies from the `requirements.txt` file, run:
+
+```bash
+pip install -r requirements.txt
+```
+
+Make sure you're in the correct directory where the `requirements.txt` file is located, or provide the full path.
+
+---
+
 ## ❗ Disclaimer
 
 > You are using these modules at **your own risk**.
