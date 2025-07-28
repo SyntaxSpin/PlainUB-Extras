@@ -109,7 +109,7 @@ async def quote_sticker_handler(bot: BOT, message: Message):
 
     author_name = author_user.first_name if isinstance(author_user, User) else author_user.title
     
-    progress_message = await message.reply("<i>Creating image...</i> 🎨")
+    progress_message = await message.reply("Creating image... 🎨")
     
     pfp_path, file_path = None, ""
     temp_files = []
