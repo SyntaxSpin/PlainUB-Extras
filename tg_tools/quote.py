@@ -27,7 +27,7 @@ async def find_quotly_response_in_history(bot: BOT, timeout: int) -> Message | N
 async def quote_sticker_handler(bot: BOT, message: Message):
     """
     CMD: Q | QUOTE
-    INFO: Creates a sticker/image by forwarding messages to @QuotLy.
+    INFO: Creates a sticker/image by forwarding messages to @QuotLyBot.
     USAGE: .q [count] (reply to a message)
     """
     if not message.replied:
@@ -38,7 +38,7 @@ async def quote_sticker_handler(bot: BOT, message: Message):
     if message.input and message.input.isdigit():
         count = min(int(message.input), 10)
 
-    progress_message = await message.reply(f"<i>Forwarding {count} message(s) to @QuotLy...</i> 🎨")
+    progress_message = await message.reply(f"<i>Forwarding {count} message(s) to @QuotLyBot...</i> 🎨")
     
     message_ids = range(message.replied.id, message.replied.id + count)
     
@@ -58,10 +58,10 @@ async def quote_sticker_handler(bot: BOT, message: Message):
             await quotly_response.forward(message.chat.id)
             
         else:
-            raise asyncio.TimeoutError("@QuotLy did not respond in time.")
+            raise asyncio.TimeoutError("@QuotLyBot did not respond in time.")
 
     except Exception as e:
-        error_text = f"<b>Error:</b> Could not get a quote from @QuotLy.\n<code>{html.escape(str(e))}</code>"
+        error_text = f"<b>Error:</b> Could not get a quote from @QuotLyBot.\n<code>{html.escape(str(e))}</code>"
         try:
             await progress_message.edit(error_text)
             await asyncio.sleep(ERROR_VISIBLE_DURATION)
