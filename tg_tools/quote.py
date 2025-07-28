@@ -35,53 +35,19 @@ def get_color_from_id(user_id: int) -> tuple[int, int, int, int]:
     rgb_int = tuple(int(c * 255) for c in rgb_float)
     return (*rgb_int, 255)
 
-def get_initials(name: str) -> str:
-    """Pobiera inicjały z imienia i nazwiska."""
-    parts = name.split()
-    if len(parts) >= 2:
-        return (parts[0][0] + parts[-1][0]).upper()
-    elif parts:
-        return parts[0][0].upper()
-    return "?"
-
-def create_stock_pfp(name: str, user_id: int) -> str:
-    """Tworzy stockowy, okrągły awatar z inicjałami."""
-    size_ss = PFP_SIZE * SUPERSAMPLE_FACTOR
-    font_size_ss = int(size_ss * 0.45)
-    
-    image = Image.new('RGBA', (size_ss, size_ss), (0,0,0,0))
-    draw = ImageDraw.Draw(image)
-    
-    bg_color = get_color_from_id(user_id)
-    initials = get_initials(name)
-    
-    draw.ellipse((0, 0, size_ss, size_ss), fill=bg_color)
-    
-    try:
-        font = ImageFont.truetype(FONT_BOLD_PATH, font_size_ss)
-    except Exception:
-        font = ImageFont.load_default()
-
-    draw.text((size_ss / 2, size_ss / 2), initials, font=font, fill=(255, 255, 255), anchor="mm")
-    
-    final_image = image.resize((PFP_SIZE, PFP_SIZE), Image.Resampling.LANCZOS)
-    
-    path = os.path.join(TEMP_DIR, f"stock_pfp_{user_id}.png")
-    final_image.save(path, 'PNG')
-    return path
-
 def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: tuple) -> str:
-    pfp_size_ss = PFP_SIZE * SUPERSAMPLE_FACTOR
-    padding_ss = PADDING * SUPERSAMPLE_FACTOR
-    canvas_padding_ss = CANVAS_PADDING * SUPERSAMPLE_FACTOR
+    ss = SUPERSAMPLE_FACTOR
+    pfp_size_ss, padding_ss, canvas_padding_ss = PFP_SIZE * ss, PADDING * ss, CANVAS_PADDING * ss
     
     try:
-        name_font = ImageFont.truetype(FONT_BOLD_PATH, 24 * SUPERSAMPLE_FACTOR)
-        text_font = ImageFont.truetype(FONT_REGULAR_PATH, 24 * SUPERSAMPLE_FACTOR)
+        name_font = ImageFont.truetype(FONT_BOLD_PATH, 24 * ss)
+        text_font = ImageFont.truetype(FONT_REGULAR_PATH, 24 * ss)
     except Exception:
         name_font = ImageFont.load_default()
         text_font = ImageFont.load_default()
     
+    NAME_TEXT_GAP = 5 * ss
+
     temp_draw = ImageDraw.Draw(Image.new('RGB', (1,1)))
     lines = textwrap.wrap(text, width=35)
     wrapped_text = "\n".join(lines)
@@ -93,7 +59,7 @@ def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: t
     text_width, text_height = text_bbox[2] - text_bbox[0], text_bbox[3] - text_bbox[1]
     
     bubble_width = max(name_width, text_width) + padding_ss * 2
-    bubble_height = name_height + text_height + padding_ss * 2 + (10 * SUPERSAMPLE_FACTOR if text else 0)
+    bubble_height = name_height + text_height + padding_ss * 2 + (NAME_TEXT_GAP if text else 0)
     
     content_width = pfp_size_ss + padding_ss + bubble_width
     content_height = max(pfp_size_ss, bubble_height)
@@ -107,12 +73,13 @@ def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: t
     pfp_x, pfp_y = canvas_padding_ss, canvas_padding_ss
     bubble_x0, bubble_y0 = pfp_x + pfp_size_ss + padding_ss, pfp_y
     
-    draw.rounded_rectangle((bubble_x0, bubble_y0, bubble_x0 + bubble_width, bubble_y0 + bubble_height), radius=20 * SUPERSAMPLE_FACTOR, fill=BUBBLE_COLOR)
+    draw.rounded_rectangle((bubble_x0, bubble_y0, bubble_x0 + bubble_width, bubble_y0 + bubble_height), radius=20 * ss, fill=BUBBLE_COLOR)
     
     text_x = bubble_x0 + padding_ss
-    text_y = bubble_y0 + padding_ss
+    text_y = bubble_y0 + (padding_ss * 0.8)
+
     draw.text((text_x, text_y), name, font=name_font, fill=name_color)
-    draw.text((text_x, text_y + name_height + 10 * SUPERSAMPLE_FACTOR), wrapped_text, font=text_font, fill=TEXT_COLOR)
+    draw.text((text_x, text_y + name_height + NAME_TEXT_GAP), wrapped_text, font=text_font, fill=TEXT_COLOR)
     
     if pfp_path:
         try:
@@ -124,8 +91,8 @@ def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: t
         except Exception:
             pass
 
-    final_width = int(final_width_ss / SUPERSAMPLE_FACTOR)
-    final_height = int(final_height_ss / SUPERSAMPLE_FACTOR)
+    final_width = int(final_width_ss / ss)
+    final_height = int(final_height_ss / ss)
     final_image = large_image.resize((final_width, final_height), Image.Resampling.LANCZOS)
 
     output_path = os.path.join(TEMP_DIR, f"quote_{hash(text + name)}.png")
@@ -193,3 +160,29 @@ async def quote_sticker_handler(bot: BOT, message: Message):
         for f in temp_files:
             if f and os.path.exists(f):
                 os.remove(f)
+
+def create_stock_pfp(name: str, user_id: int) -> str:
+    ss = SUPERSAMPLE_FACTOR
+    size_ss = PFP_SIZE * ss
+    font_size_ss = int(size_ss * 0.45)
+    
+    image = Image.new('RGBA', (size_ss, size_ss), (0,0,0,0))
+    draw = ImageDraw.Draw(image)
+    
+    bg_color = get_color_from_id(user_id)
+    initials = (name.split()[0][0] + (name.split()[-1][0] if len(name.split()) > 1 else "")).upper() if name else "?"
+    
+    draw.ellipse((0, 0, size_ss, size_ss), fill=bg_color)
+    
+    try:
+        font = ImageFont.truetype(FONT_BOLD_PATH, font_size_ss)
+    except Exception:
+        font = ImageFont.load_default()
+
+    draw.text((size_ss / 2, size_ss / 2), initials, font=font, fill=(255, 255, 255), anchor="mm")
+    
+    final_image = image.resize((PFP_SIZE, PFP_SIZE), Image.Resampling.LANCZOS)
+    
+    path = os.path.join(TEMP_DIR, f"stock_pfp_{user_id}.png")
+    final_image.save(path, 'PNG')
+    return path
