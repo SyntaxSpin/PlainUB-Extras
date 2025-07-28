@@ -1,0 +1,30 @@
+import cowsay
+import html
+from pyrogram.types import Message
+
+from app import BOT, bot
+
+@bot.add_cmd(cmd="cowsay")
+async def cowsay_handler(bot: BOT, message: Message):
+    """
+    CMD: COWSAY
+    INFO: A talking cow in your chat.
+    USAGE: .cowsay [text] or reply to a message.
+    """
+    
+    text_to_say = ""
+    if message.input:
+        text_to_say = message.input
+    elif message.replied and message.replied.text:
+        text_to_say = message.replied.text
+    else:
+        await message.edit("What should the cow say? Provide text or reply to a message.")
+        return
+
+    # Generate the cowsay text
+    cow_text = cowsay.cow(text_to_say)
+    
+    # Format it for Telegram's monospace font
+    final_text = f"<pre language=cowsay>{html.escape(cow_text)}</pre>"
+    
+    await message.edit(final_text)
