@@ -4,3 +4,4 @@ wikipedia-api
 deep-translator
 cowsay
 pyfiglet
+gTTS
