@@ -37,9 +37,9 @@ async def sync_resize_video_or_gif(input_path: str, width: int, height: int) -> 
     
     command_resize = (
         f'ffmpeg -i "{input_path}" '
-        f'-vf "scale={width}:{height}" '
-        f'-c:v libx264 -preset veryfast -crf 23 '
-        f'-c:a aac -b:a 128k '
+        f'-vf "scale={width}:{height},setsar=1" '
+        f'-c:v libx264 -preset veryfast '
+        f'-c:a aac '
         f'-y "{output_path}"'
     )
     _, stderr, code = await run_command(command_resize)
