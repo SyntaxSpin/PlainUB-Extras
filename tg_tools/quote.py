@@ -12,8 +12,8 @@ from app import BOT, bot
 TEMP_DIR = "temp_quotes"
 os.makedirs(TEMP_DIR, exist_ok=True)
 
-FONT_REGULAR_PATH = "app/modules/Roboto-Regular.ttf" 
-FONT_BOLD_PATH = "app/modules/Roboto-Bold.ttf"
+FONT_REGULAR_PATH = "app/modules/NotoSans-Regular.ttf" 
+FONT_BOLD_PATH = "app/modules/NotoSans-Bold.ttf"
 
 BUBBLE_COLOR = (24, 35, 43, 220)
 TEXT_COLOR = (255, 255, 255, 255)
@@ -33,23 +33,7 @@ def get_color_from_id(user_id: int) -> tuple[int, int, int, int]:
     rgb_int = tuple(int(c * 255) for c in rgb_float)
     return (*rgb_int, 255)
 
-async def sync_download_media(file_id: str, file_type: str) -> str | None:
-    try:
-        file = await bot.get_file(file_id)
-        url = f"https://api.telegram.org/file/bot{bot.bot_token}/{file.file_path}"
-        response = requests.get(url)
-        response.raise_for_status()
-        
-        ext = {"pfp": "jpg", "photo": "jpg", "sticker": "webp"}[file_type]
-        media_path = os.path.join(TEMP_DIR, f"{file_id}.{ext}")
-        with open(media_path, "wb") as f:
-            f.write(response.content)
-        return media_path
-    except Exception:
-        return None
-
-def create_multiquote_image(messages_data: list) -> str:
-    """Creates an image from a list of message data."""
+def create_telegram_quote_image(pfp_path: str | None, name: str, text: str, name_color: tuple) -> str:
     try:
         name_font = ImageFont.truetype(FONT_BOLD_PATH, 24)
         text_font = ImageFont.truetype(FONT_REGULAR_PATH, 24)
@@ -57,166 +41,88 @@ def create_multiquote_image(messages_data: list) -> str:
         name_font = ImageFont.load_default()
         text_font = ImageFont.load_default()
 
-    total_height = PADDING
-    message_elements = []
+    lines = textwrap.wrap(text, width=32)
+    wrapped_text = "\n".join(lines)
+    
+    name_height = name_font.getbbox(name)[3] - name_font.getbbox(name)[1]
+    text_height = 0
+    if wrapped_text:
+        line_height = text_font.getbbox("A")[3] - text_font.getbbox("A")[1] + 5
+        text_height = line_height * len(lines)
 
-    for msg_data in messages_data:
-        text = msg_data.get("text", "")
-        
-        lines = textwrap.wrap(text, width=32)
-        wrapped_text = "\n".join(lines)
-        name_bbox = name_font.getbbox(msg_data["author_name"])
-        
-        text_bbox = text_font.getbbox("A")
-        if wrapped_text:
-            bbox = ImageDraw.Draw(Image.new('RGB', (1,1))).multiline_textbbox((0,0), wrapped_text, font=text_font)
-            text_height = bbox[3] - bbox[1]
-        else:
-            text_height = 0
-
-        bubble_height = (name_bbox[3] + 10) + text_height + PADDING * 2 if text else name_bbox[3] + PADDING
-        
-        media_height = 0
-        media_image = None
-        if msg_data.get("media_path"):
-            try:
-                media_image = Image.open(msg_data["media_path"])
-                w, h = media_image.size
-                ratio = h / w
-                new_w = IMG_WIDTH - (PFP_SIZE + PADDING * 2)
-                new_h = int(new_w * ratio)
-                media_image = media_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                media_height = new_h + PADDING
-            except Exception:
-                media_image = None
-        
-        bubble_height += media_height
-        current_height = max(PFP_SIZE + PADDING, bubble_height)
-        
-        message_elements.append({
-            "pfp_path": msg_data.get("pfp_path"), "media_image": media_image, "media_height": media_height,
-            "author_name": msg_data["author_name"], "wrapped_text": wrapped_text, "name_color": msg_data["name_color"],
-            "height": current_height, "name_bbox": name_bbox
-        })
-        total_height += current_height
-
-    final_image = Image.new('RGBA', (IMG_WIDTH, total_height), (0, 0, 0, 0))
+    bubble_content_height = name_height + text_height + 10
+    bubble_height = bubble_content_height + PADDING * 2
+    final_height = max(PFP_SIZE + PADDING, bubble_height) + PADDING
+    
+    final_image = Image.new('RGBA', (IMG_WIDTH, int(final_height)), (0, 0, 0, 0))
     draw = ImageDraw.Draw(final_image)
-    current_y = PADDING
-
-    for element in message_elements:
-        pfp_image = None
-        if element["pfp_path"]:
-            try:
-                pfp_image = Image.open(element["pfp_path"]).convert("RGBA")
+    
+    bubble_x0, bubble_y0 = PFP_SIZE + PADDING, PADDING
+    draw.rounded_rectangle((bubble_x0, bubble_y0, IMG_WIDTH - PADDING, bubble_y0 + bubble_height), radius=20, fill=BUBBLE_COLOR)
+    
+    text_x, text_y = bubble_x0 + PADDING, bubble_y0 + PADDING
+    draw.text((text_x, text_y), name, font=name_font, fill=name_color)
+    draw.text((text_x, text_y + name_height + 10), wrapped_text, font=text_font, fill=TEXT_COLOR)
+    
+    if pfp_path:
+        try:
+            with Image.open(pfp_path).convert("RGBA") as pfp_image:
                 pfp_image = pfp_image.resize((PFP_SIZE, PFP_SIZE), Image.Resampling.LANCZOS)
                 mask = Image.new('L', (PFP_SIZE, PFP_SIZE), 0)
                 draw_mask = ImageDraw.Draw(mask)
                 draw_mask.ellipse((0, 0, PFP_SIZE, PFP_SIZE), fill=255)
-            except Exception:
-                pfp_image = None
-        
-        bubble_x0, bubble_y0 = PFP_SIZE + PADDING, current_y
-        bubble_width = IMG_WIDTH - (PFP_SIZE + PADDING * 2)
-        bubble_height = element["height"] - PADDING
-        
-        draw.rounded_rectangle((bubble_x0, bubble_y0, bubble_x0 + bubble_width, bubble_y0 + bubble_height), radius=20, fill=BUBBLE_COLOR)
+                final_image.paste(pfp_image, (PADDING // 2, PADDING), mask)
+        except Exception:
+            pass
 
-        text_x, text_y = bubble_x0 + PADDING, bubble_y0 + PADDING
-        draw.text((text_x, text_y), element["author_name"], font=name_font, fill=element["name_color"])
-        
-        media_y_offset = 0
-        if element["media_image"]:
-            media_y_offset = element["media_height"]
-            final_image.paste(element["media_image"], (int(text_x), int(text_y + element["name_bbox"][3] + 10)))
-        
-        draw.text((text_x, text_y + element["name_bbox"][3] + 10 + media_y_offset), element["wrapped_text"], font=text_font, fill=TEXT_COLOR)
-        
-        if pfp_image:
-            final_image.paste(pfp_image, (PADDING // 2, int(current_y)), mask)
-        
-        current_y += element["height"]
-
-    output_path = os.path.join(TEMP_DIR, f"quote_{hash(''.join(m['author_name'] for m in messages_data))}.png")
+    output_path = os.path.join(TEMP_DIR, f"quote_{hash(text + name)}.png")
     final_image.save(output_path, 'PNG')
     return output_path
 
 
 @bot.add_cmd(cmd=["q", "quote"])
 async def quote_sticker_handler(bot: BOT, message: Message):
-    if not message.replied:
-        await message.edit("Please reply to a message to quote.", del_in=ERROR_VISIBLE_DURATION)
+    replied_msg = message.replied
+    if not replied_msg or not (replied_msg.text or replied_msg.caption):
+        await message.edit("Please reply to a message with text to quote.", del_in=ERROR_VISIBLE_DURATION)
         return
 
-    count = 1
-    if message.input and message.input.isdigit():
-        count = min(int(message.input), 10)
-
-    progress_message = await message.reply(f"<i>Quoting {count} message(s)...</i> 🎨")
+    text_to_quote = replied_msg.text or replied_msg.caption
+    author_user = replied_msg.from_user or replied_msg.sender_chat
     
-    messages_to_quote_ids = range(message.replied.id, message.replied.id + count)
-    messages = await bot.get_messages(message.chat.id, messages_to_quote_ids)
+    if not author_user:
+        await message.edit("Cannot quote an anonymous admin.", del_in=ERROR_VISIBLE_DURATION)
+        return
+
+    author_name = author_user.first_name if isinstance(author_user, User) else author_user.title
     
-    messages_data, download_tasks, temp_files = [], [], []
+    progress_message = await message.reply("Creating image... 🎨")
+    
+    pfp_path, file_path = None, ""
+    temp_files = []
 
-    for i, msg in enumerate(messages):
-        if not msg: continue
-        
-        author_user = msg.from_user or msg.sender_chat
-        if not author_user: continue
-
-        author_name = author_user.first_name if isinstance(author_user, User) else author_user.title
-        
-        msg_data = {
-            "author_name": author_name,
-            "name_color": get_color_from_id(author_user.id),
-            "text": msg.text or msg.caption or ""
-        }
-        
-        if i == 0 or messages[i-1].from_user.id != msg.from_user.id:
-            pfp_file_id = author_user.photo.big_file_id if author_user.photo else None
-            if pfp_file_id:
-                task = asyncio.create_task(sync_download_media(pfp_file_id, "pfp"))
-                download_tasks.append(task)
-                msg_data["pfp_task_index"] = len(download_tasks) - 1
-        
-        media_file_id, media_type = None, None
-        if msg.photo: media_file_id, media_type = msg.photo.file_id, "photo"
-        elif msg.sticker and not msg.sticker.is_animated and not msg.sticker.is_video: 
-            media_file_id, media_type = msg.sticker.file_id, "sticker"
-        
-        if media_file_id:
-            task = asyncio.create_task(sync_download_media(media_file_id, media_type))
-            download_tasks.append(task)
-            msg_data["media_task_index"] = len(download_tasks) - 1
-            
-        messages_data.append(msg_data)
-
-    downloaded_files = await asyncio.gather(*download_tasks)
-    temp_files.extend(f for f in downloaded_files if f)
-
-    pfp_map = {}
-    current_pfp_idx = 0
-    current_media_idx = len([t for t in download_tasks if "pfp" in str(t)])
-
-    for i, msg_data in enumerate(messages_data):
-        author_id = (messages[i].from_user or messages[i].sender_chat).id
-        if "pfp_task_index" in msg_data:
-            pfp_map[author_id] = downloaded_files[current_pfp_idx]
-            current_pfp_idx += 1
-        
-        messages_data[i]["pfp_path"] = pfp_map.get(author_id)
-
-        if "media_task_index" in msg_data:
-            messages_data[i]["media_path"] = downloaded_files[current_media_idx]
-            current_media_idx += 1
-
-
-    file_path = ""
     try:
-        if not messages_data: raise ValueError("Could not find any valid messages to quote.")
-        file_path = await asyncio.to_thread(create_multiquote_image, messages_data)
-        await bot.send_photo(chat_id=message.chat.id, photo=file_path, reply_to_message_id=message.reply_to_message_id)
+        if author_user.photo:
+            pfp_path = await bot.download_media(
+                author_user.photo.big_file_id, 
+                file_name=os.path.join(TEMP_DIR, f"pfp_{author_user.id}.jpg")
+            )
+            if pfp_path:
+                temp_files.append(pfp_path)
+
+        author_color = get_color_from_id(author_user.id)
+        
+        file_path = await asyncio.to_thread(
+            create_telegram_quote_image, 
+            pfp_path, author_name, text_to_quote, author_color
+        )
+        temp_files.append(file_path)
+        
+        await bot.send_photo(
+            chat_id=message.chat.id,
+            photo=file_path,
+            reply_to_message_id=replied_msg.id
+        )
         await progress_message.delete()
         await message.delete()
 
@@ -229,5 +135,5 @@ async def quote_sticker_handler(bot: BOT, message: Message):
         except: pass
     finally:
         for f in temp_files:
-            if f and os.path.exists(f): os.remove(f)
-        if file_path and os.path.exists(file_path): os.remove(f)
+            if f and os.path.exists(f):
+                os.remove(f)
