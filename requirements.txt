@@ -3,3 +3,4 @@ requests
 wikipedia-api
 deep-translator
 cowsay
+pyfiglet
