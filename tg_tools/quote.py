@@ -15,7 +15,8 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 FONT_REGULAR_PATH = "app/modules/NotoSans-Regular.ttf" 
 FONT_BOLD_PATH = "app/modules/NotoSans-Bold.ttf"
 
-BUBBLE_COLOR = (24, 35, 43, 220)
+CANVAS_BG_COLOR = (0, 0, 0, 255)
+BUBBLE_COLOR = (24, 35, 43, 255)
 TEXT_COLOR = (255, 255, 255, 255)
 
 PFP_SIZE = 64
@@ -41,7 +42,6 @@ def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: t
         name_font = ImageFont.load_default()
         text_font = ImageFont.load_default()
     
-    # Krok 1: Obliczanie wymiarów
     temp_draw = ImageDraw.Draw(Image.new('RGB', (1,1)))
     lines = textwrap.wrap(text, width=35)
     wrapped_text = "\n".join(lines)
@@ -61,9 +61,8 @@ def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: t
     final_width = content_width + CANVAS_PADDING * 2
     final_height = content_height + CANVAS_PADDING * 2
     
-    base_layer = Image.new('RGBA', (int(final_width), int(final_height)), (0, 0, 0, 0))
-    content_layer = Image.new('RGBA', base_layer.size, (255, 255, 255, 0))
-    draw = ImageDraw.Draw(content_layer)
+    final_image = Image.new('RGBA', (int(final_width), int(final_height)), CANVAS_BG_COLOR)
+    draw = ImageDraw.Draw(final_image)
 
     pfp_x, pfp_y = CANVAS_PADDING, CANVAS_PADDING
     bubble_x0, bubble_y0 = pfp_x + PFP_SIZE + PADDING, pfp_y
@@ -75,14 +74,16 @@ def create_quote_image(pfp_path: str | None, name: str, text: str, name_color: t
     draw.text((text_x, text_y), name, font=name_font, fill=name_color)
     draw.text((text_x, text_y + name_height + 10), wrapped_text, font=text_font, fill=TEXT_COLOR)
     
-    final_image = Image.alpha_composite(base_layer, content_layer)
-    
     if pfp_path:
         try:
             with Image.open(pfp_path).convert("RGBA") as pfp_image:
                 pfp_image = pfp_image.resize((PFP_SIZE, PFP_SIZE), Image.Resampling.LANCZOS)
-                mask = Image.new('L', (PFP_SIZE, PFP_SIZE), 0)
-                ImageDraw.Draw(mask).ellipse((0, 0, PFP_SIZE, PFP_SIZE), fill=255)
+                
+                supersample = 4
+                mask = Image.new('L', (PFP_SIZE * supersample, PFP_SIZE * supersample), 0)
+                ImageDraw.Draw(mask).ellipse((0, 0, PFP_SIZE * supersample, PFP_SIZE * supersample), fill=255)
+                mask = mask.resize((PFP_SIZE, PFP_SIZE), Image.Resampling.LANCZOS)
+                
                 final_image.paste(pfp_image, (pfp_x, pfp_y), mask)
         except Exception:
             pass
