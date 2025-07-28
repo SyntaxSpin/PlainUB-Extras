@@ -92,7 +92,7 @@ async def query_single_bot(bot: BOT, bot_id: int, user_to_check: User) -> tuple[
 @bot.add_cmd(cmd=["fstat", "fedstat"])
 async def fed_stat_handler(bot: BOT, message: Message):
     """Checks a user's federation ban status using a robust concurrent method."""
-    progress: Message = await message.reply("Checking fedstat...")
+    progress: Message = await message.reply("<code>Checking fedstat...</code>")
 
     target_identifier = "me"
     if message.input:
