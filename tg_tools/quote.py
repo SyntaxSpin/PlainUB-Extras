@@ -48,7 +48,8 @@ async def quote_sticker_handler(bot: BOT, message: Message):
             from_chat_id=message.chat.id,
             message_ids=message_ids
         )
-        
+
+        await asyncio.sleep(2)
         quotly_response = await find_quotly_response_in_history(bot, QUOTLY_TIMEOUT)
 
         if quotly_response:
