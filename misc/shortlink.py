@@ -1,7 +1,7 @@
 import html
 import requests
 import asyncio
-from pyrogram.types import Message
+from pyrogram.types import LinkPreviewOptions, Message
 
 from app import BOT, bot
 
@@ -48,7 +48,7 @@ async def shortlink_handler(bot: BOT, message: Message):
             )
             await progress_message.edit(
                 final_text,
-                disable_web_page_preview=True
+                link_preview_options=LinkPreviewOptions(is_disabled=True)
             )
             await message.delete()
             return
