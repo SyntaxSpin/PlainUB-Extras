@@ -1,8 +1,11 @@
 import cowsay
 import html
+import asyncio
 from pyrogram.types import Message
 
 from app import BOT, bot
+
+ERROR_VISIBLE_DURATION = 8
 
 def safe_escape(text: str) -> str:
     escaped_text = html.escape(str(text))
@@ -22,10 +25,13 @@ async def cowsay_handler(bot: BOT, message: Message):
     elif message.replied and message.replied.text:
         text_to_say = message.replied.text
     else:
-        await message.edit("What should the cow say? Provide text or reply to a message.", del_in=8)
+        await message.edit("What should the cow say? Provide text or reply to a message.")
+        await asyncio.sleep(ERROR_VISIBLE_DURATION)
+        await message.delete()
         return
 
     cow_text = cowsay.cow(text_to_say)
     final_text = f"<pre language=cowsay>{safe_escape(cow_text)}</pre>"
 
-    await message.edit(final_text)
+    await message.reply(final_text)
+    await message.delete()
