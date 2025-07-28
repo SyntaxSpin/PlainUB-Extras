@@ -1,7 +1,7 @@
 import asyncio
 import html
 from googlesearch import search
-from pyrogram.types import Message
+from pyrogram.types import LinkPreviewOptions, Message
 
 from app import BOT, bot
 
@@ -42,7 +42,7 @@ async def google_search_handler(bot: BOT, message: Message):
         
         await progress_message.edit(
             output_str,
-            disable_web_page_preview=True
+            link_preview_options=LinkPreviewOptions(is_disabled=True)
         )
         await message.delete()
 
