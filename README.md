@@ -4,7 +4,7 @@
 
 ## ⚙️ How to Use
 
-### ✅ Automatic Method (Recommended)
+### ✅ Automatic Method (Recommended) (Need Docker)
 
 1. Fork or clone this repository.
 2. In your `config.env` file, add or modify the following line to point to your fork or this repository directly:
