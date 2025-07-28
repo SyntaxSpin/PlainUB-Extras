@@ -4,6 +4,10 @@ from pyrogram.types import Message
 
 from app import BOT, bot
 
+def safe_escape(text: str) -> str:
+    escaped_text = html.escape(str(text))
+    return escaped_text.replace("&#x27;", "’")
+
 @bot.add_cmd(cmd="cowsay")
 async def cowsay_handler(bot: BOT, message: Message):
     """
@@ -22,6 +26,6 @@ async def cowsay_handler(bot: BOT, message: Message):
         return
 
     cow_text = cowsay.cow(text_to_say)
-    final_text = f"<pre language=cowsay>{html.escape(cow_text)}</pre>"
+    final_text = f"<pre language=cowsay>{safe_escape(cow_text)}</pre>"
 
     await message.edit(final_text)
