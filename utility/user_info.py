@@ -30,7 +30,7 @@ def get_user_status(user: User) -> str:
 
 @bot.add_cmd(cmd=["info", "whois", "userinfo"])
 async def info_handler(bot: BOT, message: Message):
-    progress: Message = await message.reply("Fetching user information...")
+    progress: Message = await message.reply("<code>Fetching user information...<code>")
 
     target_user: User | None = None
     
