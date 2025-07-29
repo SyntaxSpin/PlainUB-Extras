@@ -2,7 +2,7 @@ import os
 import html
 import asyncio
 from PIL import Image
-from pyrogram.types import Message
+from pyrogram.types import Message, ReplyParameters
 
 from app import BOT, bot
 
@@ -94,7 +94,7 @@ async def resize_handler(bot: BOT, message: Message):
                 message.chat.id,
                 resized_path,
                 caption=f"Resized to: `{width}x{height}`",
-                reply_to_message_id=replied_msg.id
+                reply_parameters=ReplyParameters(message_id=replied_msg.id)
             )
         
         elif is_video or is_animation:
@@ -110,7 +110,7 @@ async def resize_handler(bot: BOT, message: Message):
                     width=width,
                     height=height,
                     thumb=thumb_path,
-                    reply_to_message_id=replied_msg.id
+                    reply_parameters=ReplyParameters(message_id=replied_msg.id)
                 )
             else:
                 await bot.send_animation(
@@ -120,7 +120,7 @@ async def resize_handler(bot: BOT, message: Message):
                     width=width,
                     height=height,
                     thumb=thumb_path,
-                    reply_to_message_id=replied_msg.id
+                    reply_parameters=ReplyParameters(message_id=replied_msg.id)
                 )
         else:
             raise ValueError("Unsupported media type.")
