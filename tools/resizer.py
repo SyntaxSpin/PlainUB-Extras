@@ -90,7 +90,12 @@ async def resize_handler(bot: BOT, message: Message):
             resized_path = await asyncio.to_thread(sync_resize_image, original_path, width, height)
             temp_files.append(resized_path)
             await progress_message.edit("<code>Sending media...</code>")
-            await message.reply_photo(photo=resized_path, caption=f"Resized to: `{width}x{height}`", reply_to_message_id=replied_msg.id)
+            await await bot.send_photo(
+                message.chat.id,
+                resized_path,
+                caption=f"Resized to: `{width}x{height}`",
+                reply_to_message_id=replied_msg.id
+            )
         
         elif is_video or is_animation:
             resized_path, thumb_path = await sync_resize_video_or_gif(original_path, width, height)
