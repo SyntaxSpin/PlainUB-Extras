@@ -35,7 +35,6 @@ def is_ip(text: str) -> bool: return bool(re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\
 def is_domain(text: str) -> bool: return "." in text and "/" not in text and not is_ip(text)
 
 def format_vt_report(data: dict, scan_type: str, resource_id: str, original_input: str = "") -> str:
-    """Creates a standardized report, including the scanned target for context."""
     if scan_type == "file":
         header = "<b>VirusTotal File Report:</b>"
     else:
@@ -67,13 +66,16 @@ async def virustotal_handler(bot: BOT, message: Message):
         return await message.edit("<b>VirusTotal API Key not configured.</b>", del_in=ERROR_VISIBLE_DURATION)
     
     api_key = VIRUSTOTAL_API_KEY
-    if message.replied and message.replied.media: await scan_file(api_key, message)
+    if message.replied and message.replied.media:
+        await scan_file(api_key, message)
     elif message.input:
         if is_url(message.input): await scan_url(api_key, message)
         elif is_ip(message.input): await scan_domain_or_ip(api_key, message, "ip")
         elif is_domain(message.input): await scan_domain_or_ip(api_key, message, "domain")
         else: await message.edit("Invalid input.", del_in=ERROR_VISIBLE_DURATION)
-    else: await message.edit("Reply to a file or provide a URL/domain/IP.", del_in=ERROR_VISIBLE_DURATION)
+    else:
+        await message.edit("Reply to a file or provide a URL/domain/IP.", del_in=ERROR_VISIBLE_DURATION)
+
 
 async def scan_file(api_key: str, message: Message):
     progress = await message.reply("<code>Downloading...</code>")
@@ -98,8 +100,9 @@ async def scan_file(api_key: str, message: Message):
         for f in temp_files:
             if f and os.path.exists(f): os.remove(f)
 
+
 async def scan_url(api_key: str, message: Message):
-    progress = await message.reply("<code>Querying URL...</code>")
+    progress = await message.edit("<code>Querying URL...</code>", disable_web_page_preview=True)
     try:
         target_url = message.input
         url_id = base64.urlsafe_b64encode(target_url.encode()).decode().strip("=")
@@ -112,13 +115,15 @@ async def scan_url(api_key: str, message: Message):
             await asyncio.to_thread(requests.post, post_url, data=post_data, headers=headers)
             final_report += "\n<i>  Check the report in a minute.</i>"
         else: final_report = f"<b>Report:</b>\n<b>  - Error:</b> API code {response.status_code}."
-        await bot.send_message(message.chat.id, final_report, reply_parameters=ReplyParameters(message_id=message.id), link_preview_options=LinkPreviewOptions(is_disabled=True))
-        await progress.delete(); await message.delete()
+        
+        # Edit the progress message with the final report.
+        await progress.edit(final_report, link_preview_options=LinkPreviewOptions(is_disabled=True))
     except Exception as e:
         await progress.edit(f"<b>Error:</b> <code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
 
+
 async def scan_domain_or_ip(api_key: str, message: Message, scan_type: str):
-    progress = await message.reply(f"<code>Querying {scan_type.capitalize()}...</code>")
+    progress = await message.edit(f"<code>Querying {scan_type.capitalize()}...</code>", disable_web_page_preview=True)
     try:
         resource = message.input
         endpoint = "ip_addresses" if scan_type == "ip" else "domains"
@@ -127,7 +132,8 @@ async def scan_domain_or_ip(api_key: str, message: Message, scan_type: str):
         if response.status_code == 200: final_report = format_vt_report(response.json()["data"]["attributes"], scan_type, resource, resource)
         elif response.status_code == 404: final_report = f"<b>Report:</b>\n<b>  - Status:</b> ⚪ {scan_type.capitalize()} not found."
         else: final_report = f"<b>Report:</b>\n<b>  - Error:</b> API code {response.status_code}."
-        await bot.send_message(message.chat.id, final_report, reply_parameters=ReplyParameters(message_id=message.id), link_preview_options=LinkPreviewOptions(is_disabled=True))
-        await progress.delete(); await message.delete()
+            
+        # Edit the progress message with the final report.
+        await progress.edit(final_report, link_preview_options=LinkPreviewOptions(is_disabled=True))
     except Exception as e:
         await progress.edit(f"<b>Error:</b> <code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
