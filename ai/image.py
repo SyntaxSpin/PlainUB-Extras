@@ -16,7 +16,7 @@ MODELSLAB_API_KEY = os.getenv("MODELSLAB_API_KEY")
 
 ERROR_VISIBLE_DURATION = 15
 
-@bot.add_cmd(cmd=["imagine", "dalle"])
+@bot.add_cmd(cmd=["imagine", "gen"])
 async def imagine_handler(bot: BOT, message: Message):
     """
     CMD: IMAGINE / DALLE
@@ -42,6 +42,7 @@ async def imagine_handler(bot: BOT, message: Message):
         
         payload = {
             "key": MODELSLAB_API_KEY,
+            "model_id": "flux",
             "prompt": prompt,
             "negative_prompt": "ugly, disfigured, low quality, blurry, nsfw, text, watermark",
             "width": "512",
