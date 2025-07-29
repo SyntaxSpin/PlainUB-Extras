@@ -80,11 +80,10 @@ def format_vt_report(data: dict, scan_type: str, resource: str) -> str:
 
 @bot.add_cmd(cmd=["virustotal", "vt"])
 async def virustotal_handler(bot: BOT, message: Message):
-    api_key = getattr(extra_config, "VIRUSTOTAL_API_KEY", None)
-    if not api_key:
+    if not VIRUSTOTAL_API_KEY or VIRUSTOTAL_API_KEY == "YOUR_KEY":
         return await message.edit(
-            "<b>VirusTotal API Key not found.</b>\n"
-            "Add <code>VIRUSTOTAL_API_KEY</code> to your config.",
+            "<b>VirusTotal API Key not configured.</b>\n"
+            "Please create <code>extra_config.env</code> in your modules folder and add your key.",
             del_in=ERROR_VISIBLE_DURATION
         )
 
