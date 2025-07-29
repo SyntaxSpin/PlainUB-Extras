@@ -76,9 +76,10 @@ async def enhance_handler(bot: BOT, message: Message):
         
         # Send the enhanced image as a document using the correct method
         await bot.send_document(
-            message.chat.id,
+            chat_id=message.chat.id,
             document=enhanced_path,
-            caption=f"Enhanced to: `{new_width}x{new_height}`"
+            caption=f"Enhanced to: `{new_width}x{new_height}`",
+            reply_to_message_id=replied_msg.id
         )
         
         # Final cleanup
