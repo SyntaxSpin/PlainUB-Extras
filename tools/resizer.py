@@ -98,25 +98,27 @@ async def resize_handler(bot: BOT, message: Message):
 
             await progress_message.edit("<code>Sending media...</code>")
             if is_video:
-                await message.reply_video(
-                    video=resized_path, 
+                await bot.send_video(
+                    message.chat.id,
+                    resized_path, 
                     caption=f"Resized to: `{width}x{height}`",
                     width=width,
                     height=height,
-                    thumb=thumb_path
+                    thumb=thumb_path,
                     reply_to_message_id=replied_msg.id
                 )
             else:
-                await message.reply_animation(
-                    animation=resized_path, 
+                await bot.send_animation(
+                    message.chat.id,
+                    resized_path, 
                     caption=f"Resized to: `{width}x{height}`",
                     width=width,
                     height=height,
-                    thumb=thumb_path
+                    thumb=thumb_path,
                     reply_to_message_id=replied_msg.id
                 )
         else:
-            raise ValueError("Unsupported media type. Please reply to an image, GIF, or video.")
+            raise ValueError("Unsupported media type.")
         
         await progress_message.delete()
         await message.delete()
@@ -124,8 +126,6 @@ async def resize_handler(bot: BOT, message: Message):
     except Exception as e:
         error_text = f"<b>Error:</b> Could not resize media.\n<code>{html.escape(str(e))}</code>"
         await progress_message.edit(error_text, del_in=ERROR_VISIBLE_DURATION)
-        try: await message.delete()
-        except: pass
     finally:
         for f in temp_files:
             if f and os.path.exists(f): os.remove(f)
