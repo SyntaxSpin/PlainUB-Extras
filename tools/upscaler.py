@@ -67,7 +67,8 @@ async def upscale_handler(bot: BOT, message: Message):
         await bot.send_photo(
             message.chat.id,
             photo=upscaled_path,
-            caption=f"Upscaled to: `{new_width}x{new_height}`"
+            caption=f"Upscaled to: `{new_width}x{new_height}`",
+            reply_to_message_id=replied_msg.id
         )
         
         # Final cleanup
