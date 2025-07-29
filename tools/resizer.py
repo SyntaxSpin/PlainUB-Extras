@@ -90,7 +90,7 @@ async def resize_handler(bot: BOT, message: Message):
             resized_path = await asyncio.to_thread(sync_resize_image, original_path, width, height)
             temp_files.append(resized_path)
             await progress_message.edit("<code>Sending media...</code>")
-            await await bot.send_photo(
+            await bot.send_photo(
                 message.chat.id,
                 resized_path,
                 caption=f"Resized to: `{width}x{height}`",
