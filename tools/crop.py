@@ -53,8 +53,9 @@ async def crop_handler(bot: BOT, message: Message):
         .crop <width>x<height> (e.g., .crop 1280x720)
     """
     replied_msg = message.replied
-    if not replied_msg or not replied_msg.photo:
-        await message.edit("Please reply to an image to crop it.", del_in=ERROR_VISIBLE_DURATION)
+    is_photo = replied_msg and (replied_msg.photo or (replied_msg.document and replied_msg.document.mime_type.startswith("image/")))
+    if not is_photo:
+        await message.edit("Please reply to an image to use this command.", del_in=ERROR_VISIBLE_DURATION)
         return
 
     if not message.input:
