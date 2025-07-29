@@ -16,7 +16,7 @@ STABLE_DIFFUSION_API_KEY = os.getenv("STABLE_DIFFUSION_API_KEY")
 
 ERROR_VISIBLE_DURATION = 8
 
-@bot.add_cmd(cmd=["imagine", "gen")
+@bot.add_cmd(cmd=["imagine", "gen"])
 async def imagine_handler(bot: BOT, message: Message):
     """
     CMD: IMAGINE / DALLE
