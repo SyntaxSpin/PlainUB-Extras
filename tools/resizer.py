@@ -86,7 +86,7 @@ async def resize_handler(bot: BOT, message: Message):
             resized_path = await asyncio.to_thread(sync_resize_image, original_path, width, height)
             temp_files.append(resized_path)
             await progress_message.edit("<code>Sending media...</code>")
-            await bot.send_photo(message.chat.id, photo=resized_path, caption=f"Resized to: `{width}x{height}`")
+            await bot.send_photo(message.chat.id, photo=resized_path, caption=f"Resized to: `{width}x{height}`", reply_to_message_id=replied_msg.id)
         
         elif replied_msg.video or replied_msg.animation:
             resized_path, thumb_path = await sync_resize_video_or_gif(original_path, width, height)
@@ -101,6 +101,7 @@ async def resize_handler(bot: BOT, message: Message):
                     width=width,
                     height=height,
                     thumb=thumb_path
+                    reply_to_message_id=replied_msg.id
                 )
             else:
                 await bot.send_animation(
@@ -110,6 +111,7 @@ async def resize_handler(bot: BOT, message: Message):
                     width=width,
                     height=height,
                     thumb=thumb_path
+                    reply_to_message_id=replied_msg.id
                 )
         else:
             raise ValueError("Unsupported media type.")
