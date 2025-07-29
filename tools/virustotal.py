@@ -87,7 +87,8 @@ async def virustotal_handler(bot: BOT, message: Message):
             "Please create <code>extra_config.env</code> in your modules folder and add your key.",
             del_in=ERROR_VISIBLE_DURATION
         )
-
+        
+    api_key = VIRUSTOTAL_API_KEY
     replied_msg = message.replied
     target_input = message.input
     
