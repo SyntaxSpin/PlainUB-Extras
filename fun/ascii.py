@@ -1,10 +1,9 @@
-import textwrap
 import html
 
 try:
-    import cowsay
+    from pyfiglet import figlet_format
 except ImportError:
-    cowsay = None
+    figlet_format = None
 
 from app import BOT, Message, bot
 
@@ -12,30 +11,31 @@ def safe_escape(text: str) -> str:
     """Escapes HTML characters for safe sending."""
     return html.escape(str(text))
 
-@bot.add_cmd(cmd=["cowsay", "csay"])
-async def cowsay_cmd_text(bot: BOT, message: Message):
+@bot.add_cmd(cmd=["ascii", "figlet"])
+async def ascii_cmd_text(bot: BOT, message: Message):
     """
-    CMD: COWSAY / CSAY
-    INFO: Generates ASCII art cow with a speech bubble.
+    CMD: ASCII / FIGLET
+    INFO: Generates large ASCII art text.
     USAGE:
-        .cowsay <text>
+        .ascii <text>
     """
-    if not cowsay:
+    if not figlet_format:
         await message.edit(
-            "<b>Cowsay library not found.</b>\n"
-            "Please install it using: <code>pip install cowsay</code>"
+            "<b>PyFiglet library not found.</b>\n"
+            "Please install it using: <code>pip install pyfiglet</code>"
         )
         return
-
+        
     if not message.input:
-        await message.edit("What should the cow say? Provide some text.", del_in=5)
+        await message.edit("What should I write in ASCII? Provide some text.", del_in=5)
         return
 
-    text_to_say = message.input
+    text_to_render = message.input
     
-    # Wrap text for better formatting
-    wrapped_text = "\n".join(textwrap.wrap(text_to_say, width=40))
-    cowsay_text = cowsay.get_output_string('cow', wrapped_text)
-    
-    # Send the output inside a <code> block
-    await message.edit(f"<code>{safe_escape(cowsay_text)}</code>")
+    try:
+        # Generate the ASCII art using a standard font
+        ascii_art = figlet_format(text_to_render, font='standard')
+        # Send the output inside a <code> block
+        await message.edit(f"<code>{safe_escape(ascii_art)}</code>")
+    except Exception as e:
+        await message.edit(f"<b>An error occurred:</b>\n<code>{e}</code>")
