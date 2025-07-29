@@ -71,7 +71,7 @@ async def enhance_handler(bot: BOT, message: Message):
         enhanced_path, new_width, new_height = await asyncio.to_thread(sync_enhance_image, original_path)
         temp_files.append(enhanced_path)
         
-        await progress_message.edit("<code>Sending...</code>")
+        await progress_message.edit("<code>Sending photo as file...</code>")
         
         # Send the enhanced image as a document to preserve quality
         await bot.send_document(
