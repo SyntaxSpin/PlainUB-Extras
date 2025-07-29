@@ -2,7 +2,7 @@ import os
 import html
 import asyncio
 from PIL import Image
-from pyrogram.types import Message
+from pyrogram.types import Message, ReplyParameters
 
 from app import BOT, bot
 
@@ -69,7 +69,7 @@ async def upscale_handler(bot: BOT, message: Message):
             message.chat.id,
             photo=upscaled_path,
             caption=f"Upscaled to: `{new_width}x{new_height}`",
-            reply_to_message_id=replied_msg.id
+            reply_parameters=ReplyParameters(message_id=replied_msg.id)
         )
         
         # Final cleanup
