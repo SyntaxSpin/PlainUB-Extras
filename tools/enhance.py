@@ -15,9 +15,13 @@ def sync_enhance_image(input_path: str) -> tuple[str, int, int]:
     Returns the output path, new width, and new height.
     """
     base, ext = os.path.splitext(os.path.basename(input_path))
-    output_path = os.path.join(TEMP_DIR, f"{base}_enhanced{ext}")
+    output_path = os.path.join(TEMP_DIR, f"{base}_enhanced.png") # Force PNG for quality
     
     with Image.open(input_path) as img:
+        # Convert to a mode that supports enhancements well
+        if img.mode not in ("RGB", "RGBA"):
+            img = img.convert("RGBA")
+
         # Step 1: Upscale the image 2x for more detail to work with
         orig_width, orig_height = img.size
         new_width = orig_width * 2
@@ -29,17 +33,13 @@ def sync_enhance_image(input_path: str) -> tuple[str, int, int]:
         
         # Sharpen the image to make details crisper
         enhancer_sharp = ImageEnhance.Sharpness(upscaled_img)
-        sharpened_img = enhancer_sharp.enhance(2.0) # Factor > 1.0 increases sharpness
+        sharpened_img = enhancer_sharp.enhance(2.0)
         
         # Slightly increase contrast to make the image "pop"
         enhancer_contrast = ImageEnhance.Contrast(sharpened_img)
-        final_image = enhancer_contrast.enhance(1.1) # Factor > 1.0 increases contrast
-        
-        # Convert to RGB if necessary
-        if final_image.mode in ("RGBA", "P"):
-            final_image = final_image.convert("RGB")
+        final_image = enhancer_contrast.enhance(1.1)
             
-        final_image.save(output_path)
+        final_image.save(output_path, "PNG")
         
     return output_path, new_width, new_height
 
@@ -71,13 +71,14 @@ async def enhance_handler(bot: BOT, message: Message):
         enhanced_path, new_width, new_height = await asyncio.to_thread(sync_enhance_image, original_path)
         temp_files.append(enhanced_path)
         
-        await progress_message.edit("<code>Sending photo...</code>")
+        await progress_message.edit("<code>Sending...</code>")
         
-        # Send the enhanced image as a photo
-        await bot.send_photo(
+        # Send the enhanced image as a document to preserve quality
+        await bot.send_document(
             message.chat.id,
-            photo=enhanced_path,
-            caption=f"Enhanced to: `{new_width}x{new_height}`"
+            document=enhanced_path,
+            caption=f"Enhanced to: `{new_width}x{new_height}`",
+            force_document=True
         )
         
         # Final cleanup
