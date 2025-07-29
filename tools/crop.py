@@ -75,7 +75,7 @@ async def crop_handler(bot: BOT, message: Message):
         await message.edit("Invalid resolution format. Please use `[width]x[height]`.", del_in=ERROR_VISIBLE_DURATION)
         return
 
-    progress_message = await message.reply("<code>Downloading media...</code>")
+    progress_message = await message.reply("<code>Downloading photo...</code>")
     
     original_path, cropped_path = "", ""
     temp_files = []
@@ -89,7 +89,7 @@ async def crop_handler(bot: BOT, message: Message):
         cropped_path = await asyncio.to_thread(sync_crop_image, original_path, width, height)
         temp_files.append(cropped_path)
         
-        await progress_message.edit("<code>Sending media...</code>")
+        await progress_message.edit("<code>Sending photo...</code>")
         await bot.send_photo(message.chat.id, photo=cropped_path, caption=f"Cropped to: `{width}x{height}`")
         
         # Final cleanup
