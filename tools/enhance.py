@@ -1,7 +1,7 @@
 import os
 import html
 import asyncio
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageFilter
 
 from app import BOT, Message, bot
 
@@ -11,7 +11,7 @@ ERROR_VISIBLE_DURATION = 8
 
 def sync_enhance_image(input_path: str) -> tuple[str, int, int]:
     """
-    Synchronously upscales and enhances an image.
+    Synchronously upscales, enhances, and smooths an image.
     Returns the output path, new width, and new height.
     """
     base, ext = os.path.splitext(os.path.basename(input_path))
@@ -29,15 +29,16 @@ def sync_enhance_image(input_path: str) -> tuple[str, int, int]:
         
         upscaled_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
-        # Step 2: Apply enhancement filters to the upscaled image
-        
-        # Sharpen the image to make details crisper
+        # Step 2: Sharpen the image to make details crisper
         enhancer_sharp = ImageEnhance.Sharpness(upscaled_img)
         sharpened_img = enhancer_sharp.enhance(2.0)
         
-        # Slightly increase contrast to make the image "pop"
-        enhancer_contrast = ImageEnhance.Contrast(sharpened_img)
-        final_image = enhancer_contrast.enhance(1.1)
+        # Step 3: Smooth the image to reduce sharpness artifacts
+        smoothed_img = sharpened_img.filter(ImageFilter.SMOOTH)
+        
+        # Step 4: Slightly increase contrast to make the image "pop"
+        enhancer_contrast = ImageEnhance.Contrast(smoothed_img)
+        final_image = enhancer_contrast.enhance(1.2)
             
         final_image.save(output_path, "PNG")
         
@@ -57,7 +58,7 @@ async def enhance_handler(bot: BOT, message: Message):
         await message.edit("Please reply to an image to enhance it.", del_in=ERROR_VISIBLE_DURATION)
         return
 
-    progress_message = await message.reply("<code>Downloading photo...</code>")
+    progress_message = await message.reply("<code>Downloading media...</code>")
     
     original_path, enhanced_path = "", ""
     temp_files = []
@@ -71,14 +72,13 @@ async def enhance_handler(bot: BOT, message: Message):
         enhanced_path, new_width, new_height = await asyncio.to_thread(sync_enhance_image, original_path)
         temp_files.append(enhanced_path)
         
-        await progress_message.edit("<code>Sending photo as file...</code>")
+        await progress_message.edit("<code>Sending as document...</code>")
         
-        # Send the enhanced image as a document to preserve quality
+        # Send the enhanced image as a document using the correct method
         await bot.send_document(
             message.chat.id,
             document=enhanced_path,
-            caption=f"Enhanced to: `{new_width}x{new_height}`",
-            force_document=True
+            caption=f"Enhanced to: `{new_width}x{new_height}`"
         )
         
         # Final cleanup
