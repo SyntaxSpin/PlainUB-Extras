@@ -2,6 +2,7 @@ import os
 import html
 import asyncio
 from PIL import Image, ImageEnhance, ImageFilter
+from pyrogram.types import ReplyParameters
 
 from app import BOT, Message, bot
 
@@ -80,7 +81,7 @@ async def enhance_handler(bot: BOT, message: Message):
             chat_id=message.chat.id,
             document=enhanced_path,
             caption=f"Enhanced to: `{new_width}x{new_height}`",
-            reply_to_message_id=replied_msg.id
+            reply_parameters=ReplyParameters(message_id=replied_msg.id)
         )
         
         # Final cleanup
