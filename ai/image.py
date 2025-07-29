@@ -24,7 +24,7 @@ async def imagine_handler(bot: BOT, message: Message):
     USAGE:
         .imagine <text prompt>
     """
-    if not STABLE_DIFFUSION_API_KEY or STABLE_DIFFUSION_API_KEY == "TUTAJ_WKLEJ_SWOJ_KLUCZ_API":
+    if not STABLE_DIFFUSION_API_KEY or STABLE_DIFFUSION_API_KEY == "YOUR_KEY":
         return await message.edit(
             "<b>Stable Diffusion API Key not configured.</b>\n"
             "Please add it to your <code>extra_config.env</code> file.",
@@ -35,7 +35,7 @@ async def imagine_handler(bot: BOT, message: Message):
         return await message.edit("Please provide a text prompt to generate an image.", del_in=ERROR_VISIBLE_DURATION)
 
     prompt = message.input
-    progress_message = await message.reply("<code>Generating image... (this may take a moment)</code>")
+    progress_message = await message.reply("<code>Generating image...</code>")
 
     try:
         api_url = "https://stablediffusionapi.com/api/v3/text2img"
@@ -63,7 +63,6 @@ async def imagine_handler(bot: BOT, message: Message):
                 chat_id=message.chat.id,
                 photo=image_url,
                 caption=f"<b>Prompt:</b> <code>{html.escape(prompt)}</code>",
-                reply_to_message_id=message.id
             )
             await progress_message.delete()
             await message.delete()
