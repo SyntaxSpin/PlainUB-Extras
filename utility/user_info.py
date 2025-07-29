@@ -85,11 +85,6 @@ async def info_handler(bot: BOT, message: Message):
 
     if target_user.dc_id:
         info_lines.append(f"• <b>Data Center:</b> {target_user.dc_id}")
-
-    if target_user.is_blocked:
-        info_lines.append("<b>• Blocked:</b> <code>Yes</code>")
-    else:
-        info_lines.append("<b>• Blocked:</b> <code>No</code>")
         
     try:
         common_chats_count = len(await target_user.get_common_chats())
