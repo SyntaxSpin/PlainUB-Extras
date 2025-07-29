@@ -90,7 +90,12 @@ async def crop_handler(bot: BOT, message: Message):
         temp_files.append(cropped_path)
         
         await progress_message.edit("<code>Sending photo...</code>")
-        await bot.send_photo(message.chat.id, photo=cropped_path, caption=f"Cropped to: `{width}x{height}`")
+        await bot.send_photo(
+            chat_id=message.chat.id,
+            photo=cropped_path,
+            caption=f"Cropped to: `{width}x{height}`",
+            reply_to_message_id=replied_msg.id
+        )
         
         # Final cleanup
         await progress_message.delete()
