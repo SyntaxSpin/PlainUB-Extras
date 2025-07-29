@@ -34,8 +34,14 @@ def is_url(text: str) -> bool: return text.lower().startswith(("http://", "https
 def is_ip(text: str) -> bool: return bool(re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", text))
 def is_domain(text: str) -> bool: return "." in text and "/" not in text and not is_ip(text)
 
-def format_vt_report(data: dict, scan_type: str, resource: str) -> str:
-    report_lines = [f"<b>VirusTotal {scan_type.capitalize()} Report:</b>"]
+def format_vt_report(data: dict, scan_type: str, resource_id: str, original_input: str = "") -> str:
+    """Creates a standardized report, including the scanned target for context."""
+    if scan_type == "file":
+        header = "<b>VirusTotal File Report:</b>"
+    else:
+        header = f"<b>VirusTotal Report for {scan_type.capitalize()}:</b>\n<code>{html.escape(original_input)}</code>"
+    
+    report_lines = [header]
     stats = data.get("last_analysis_stats", {})
     malicious = stats.get("malicious", 0); suspicious = stats.get("suspicious", 0)
     detections = malicious + suspicious
@@ -50,8 +56,8 @@ def format_vt_report(data: dict, scan_type: str, resource: str) -> str:
         detection_details = [f"    - {engine}: <code>{html.escape(result['result'])}</code>" for engine, result in results.items() if result["category"] in ["malicious", "suspicious"]]
         if detection_details:
             report_lines.append("\n<b>Detection Details:</b>"); report_lines.append(f"<blockquote expandable>{'\n'.join(detection_details)}</blockquote>")
-    gui_path = f"{scan_type}/{resource}"
-    if scan_type == "ip": gui_path = f"ip-address/{resource}"
+    gui_path = f"{scan_type}/{resource_id}"
+    if scan_type == "ip": gui_path = f"ip-address/{resource_id}"
     report_lines.append(f"\n<a href='https://www.virustotal.com/gui/{gui_path}'>View Full Report</a>")
     return "\n".join(report_lines)
 
@@ -99,9 +105,9 @@ async def scan_url(api_key: str, message: Message):
         url_id = base64.urlsafe_b64encode(target_url.encode()).decode().strip("=")
         headers = {"x-apikey": api_key}; url = f"{VT_API_URL}/urls/{url_id}"
         response = await asyncio.to_thread(requests.get, url, headers=headers)
-        if response.status_code == 200: final_report = format_vt_report(response.json()["data"]["attributes"], "url", url_id)
+        if response.status_code == 200: final_report = format_vt_report(response.json()["data"]["attributes"], "url", url_id, target_url)
         elif response.status_code == 404:
-            final_report = "<b>Report:</b>\n<b>  - Status:</b> ⚪ Not in database. Submitting..."
+            final_report = f"<b>VirusTotal Report for URL:</b>\n<code>{html.escape(target_url)}</code>\n<b>  - Status:</b> ⚪ Not in database. Submitting..."
             post_url = f"{VT_API_URL}/urls"; post_data = {"url": target_url}
             await asyncio.to_thread(requests.post, post_url, data=post_data, headers=headers)
             final_report += "\n<i>  Check the report in a minute.</i>"
@@ -118,7 +124,7 @@ async def scan_domain_or_ip(api_key: str, message: Message, scan_type: str):
         endpoint = "ip_addresses" if scan_type == "ip" else "domains"
         headers = {"x-apikey": api_key}; url = f"{VT_API_URL}/{endpoint}/{resource}"
         response = await asyncio.to_thread(requests.get, url, headers=headers)
-        if response.status_code == 200: final_report = format_vt_report(response.json()["data"]["attributes"], scan_type, resource)
+        if response.status_code == 200: final_report = format_vt_report(response.json()["data"]["attributes"], scan_type, resource, resource)
         elif response.status_code == 404: final_report = f"<b>Report:</b>\n<b>  - Status:</b> ⚪ {scan_type.capitalize()} not found."
         else: final_report = f"<b>Report:</b>\n<b>  - Error:</b> API code {response.status_code}."
         await bot.send_message(message.chat.id, final_report, reply_parameters=ReplyParameters(message_id=message.id), link_preview_options=LinkPreviewOptions(is_disabled=True))
