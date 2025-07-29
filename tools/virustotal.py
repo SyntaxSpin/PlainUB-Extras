@@ -6,8 +6,15 @@ import requests
 import re
 import base64
 from pyrogram.types import Message, LinkPreviewOptions
+from dotenv import load_dotenv
 
-from app import BOT, bot, extra_config
+from app import BOT, bot
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ENV_PATH = os.path.join(SCRIPT_DIR, "extra_config.env")
+load_dotenv(dotenv_path=ENV_PATH)
+
+VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY") 
 
 TEMP_DIR = "temp_virustotal/"
 os.makedirs(TEMP_DIR, exist_ok=True)
