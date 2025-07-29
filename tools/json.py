@@ -19,6 +19,10 @@ def json_cleaner(o):
         for key, value in o.__dict__.items():
             if not key.startswith('_'):
                 clean_dict[key] = value
+
+        if "phone_number" in clean_dict and clean_dict["phone_number"]:
+            clean_dict["phone_number"] = "[CENSORED]"
+
         return clean_dict
     try:
         return str(o)
