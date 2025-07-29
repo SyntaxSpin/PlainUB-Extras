@@ -18,10 +18,14 @@ async def pfp_handler(bot: BOT, message: Message):
     target_user: User = None
 
     if message.input:
-        try: target_user = await bot.get_users(message.input)
-        except Exception: return await message.edit("User not found.", del_in=ERROR_VISIBLE_DURATION)
-    elif message.replied: target_user = message.replied.from_user
-    else: target_user = message.from_user
+        try:
+            target_user = await bot.get_users(message.input)
+        except Exception:
+            return await message.edit("User not found.", del_in=ERROR_VISIBLE_DURATION)
+    elif message.replied:
+        target_user = message.replied.from_user
+    else:
+        target_user = message.from_user
 
     progress_message = await message.reply(f"<code>Fetching profile media for {target_user.first_name}...</code>")
 
@@ -29,16 +33,21 @@ async def pfp_handler(bot: BOT, message: Message):
         media_sent = False
         async for photo in bot.get_chat_photos(target_user.id, limit=1):
             
+            caption_text = f"{target_user.mention} profile avatar"
+            
             if hasattr(photo, "video_sizes") and photo.video_sizes:
+                video_file_id = photo.video_sizes[-1].file_id
                 await bot.send_video(
-                    chat_id=message.chat.id, video=photo.file_id,
-                    caption=f"<code>{target_user.first_name} profile avatar.</code>",
+                    chat_id=message.chat.id,
+                    video=video_file_id,
+                    caption=caption_text,
                     reply_parameters=ReplyParameters(message_id=message.id)
                 )
             else:
                 await bot.send_photo(
-                    chat_id=message.chat.id, photo=photo.file_id,
-                    caption=f"<code>{target_user.first_name} profile avatar.</code>",
+                    chat_id=message.chat.id,
+                    photo=photo.file_id,
+                    caption=caption_text,
                     reply_parameters=ReplyParameters(message_id=message.id)
                 )
             
@@ -48,7 +57,8 @@ async def pfp_handler(bot: BOT, message: Message):
         if not media_sent:
             return await progress_message.edit("This user has no profile picture or video.", del_in=ERROR_VISIBLE_DURATION)
 
-        await progress_message.delete(); await message.delete()
+        await progress_message.delete()
+        await message.delete()
 
     except Exception as e:
         error_text = f"<b>Error:</b> Could not fetch profile media.\n<code>{html.escape(str(e))}</code>"
