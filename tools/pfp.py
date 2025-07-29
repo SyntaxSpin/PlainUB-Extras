@@ -31,20 +31,23 @@ async def pfp_handler(bot: BOT, message: Message):
 
     try:
         media_sent = False
-        # We only need the first (most recent) item from the generator
+        # Fetch only the first (most recent) profile media
         async for photo in bot.get_chat_photos(target_user.id, limit=1):
             
-            # Check if it's a profile video
-            if photo.video_file_id:
+            if photo.video_sizes:
+                # To send the video, we need its file_id, which is inside the video_sizes list
+                video_file_id = photo.video_sizes[-1].file_id # Get the highest quality
                 await bot.send_video(
                     chat_id=message.chat.id,
-                    video=photo.video_file_id,
+                    video=video_file_id,
+                    reply_parameters=ReplyParameters(message_id=message.id)
                 )
             # Otherwise, it's a static photo
             else:
                 await bot.send_photo(
                     chat_id=message.chat.id,
                     photo=photo.file_id,
+                    reply_parameters=ReplyParameters(message_id=message.id)
                 )
             
             media_sent = True
