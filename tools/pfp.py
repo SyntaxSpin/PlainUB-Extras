@@ -18,46 +18,35 @@ async def pfp_handler(bot: BOT, message: Message):
     target_user: User = None
 
     if message.input:
-        try:
-            target_user = await bot.get_users(message.input)
-        except Exception:
-            return await message.edit("User not found.", del_in=ERROR_VISIBLE_DURATION)
-    elif message.replied:
-        target_user = message.replied.from_user
-    else:
-        target_user = message.from_user
+        try: target_user = await bot.get_users(message.input)
+        except Exception: return await message.edit("User not found.", del_in=ERROR_VISIBLE_DURATION)
+    elif message.replied: target_user = message.replied.from_user
+    else: target_user = message.from_user
 
     progress_message = await message.reply(f"<code>Fetching profile media for {target_user.first_name}...</code>")
 
     try:
         media_sent = False
-        # Fetch only the first (most recent) profile media
         async for photo in bot.get_chat_photos(target_user.id, limit=1):
             
-            if photo.video_sizes:
-                # To send the video, we need its file_id, which is inside the video_sizes list
-                video_file_id = photo.video_sizes[-1].file_id # Get the highest quality
+            if hasattr(photo, "video_sizes") and photo.video_sizes:
                 await bot.send_video(
-                    chat_id=message.chat.id,
-                    video=video_file_id,
+                    chat_id=message.chat.id, video=photo.file_id,
                     reply_parameters=ReplyParameters(message_id=message.id)
                 )
-            # Otherwise, it's a static photo
             else:
                 await bot.send_photo(
-                    chat_id=message.chat.id,
-                    photo=photo.file_id,
+                    chat_id=message.chat.id, photo=photo.file_id,
                     reply_parameters=ReplyParameters(message_id=message.id)
                 )
             
             media_sent = True
-            break # Stop after the first item
+            break
         
         if not media_sent:
             return await progress_message.edit("This user has no profile picture or video.", del_in=ERROR_VISIBLE_DURATION)
 
-        await progress_message.delete()
-        await message.delete()
+        await progress_message.delete(); await message.delete()
 
     except Exception as e:
         error_text = f"<b>Error:</b> Could not fetch profile media.\n<code>{html.escape(str(e))}</code>"
