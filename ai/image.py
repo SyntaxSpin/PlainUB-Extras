@@ -38,7 +38,7 @@ async def imagine_handler(bot: BOT, message: Message):
     progress_message = await message.reply("<code>Generating image...</code>")
 
     try:
-        api_url = "https://stablediffusionapi.com/api/v3/text2img"
+        api_url = "https://modelslab.com/api/v6/images/text2img"
         payload = {
             "key": STABLE_DIFFUSION_API_KEY,
             "prompt": prompt,
