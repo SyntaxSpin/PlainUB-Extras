@@ -32,11 +32,13 @@ async def pfp_handler(bot: BOT, message: Message):
             if hasattr(photo, "video_sizes") and photo.video_sizes:
                 await bot.send_video(
                     chat_id=message.chat.id, video=photo.file_id,
+                    caption=f"<code>{target_user.first_name} profile avatar.</code>",
                     reply_parameters=ReplyParameters(message_id=message.id)
                 )
             else:
                 await bot.send_photo(
                     chat_id=message.chat.id, photo=photo.file_id,
+                    caption=f"<code>{target_user.first_name} profile avatar.</code>",
                     reply_parameters=ReplyParameters(message_id=message.id)
                 )
             
