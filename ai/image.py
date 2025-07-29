@@ -12,22 +12,22 @@ MODULES_DIR = os.path.dirname(SCRIPT_DIR)
 ENV_PATH = os.path.join(MODULES_DIR, "extra_config.env")
 load_dotenv(dotenv_path=ENV_PATH)
 
-STABLE_DIFFUSION_API_KEY = os.getenv("STABLE_DIFFUSION_API_KEY")
+MODELSLAB_API_KEY = os.getenv("MODELSLAB_API_KEY")
 
-ERROR_VISIBLE_DURATION = 8
+ERROR_VISIBLE_DURATION = 15
 
-@bot.add_cmd(cmd=["imagine", "gen"])
+@bot.add_cmd(cmd=["imagine", "dalle"])
 async def imagine_handler(bot: BOT, message: Message):
     """
     CMD: IMAGINE / DALLE
-    INFO: Generates an image from a text prompt using Stable Diffusion.
+    INFO: Generates an image from a text prompt using ModelsLab API.
     USAGE:
         .imagine <text prompt>
     """
-    if not STABLE_DIFFUSION_API_KEY or STABLE_DIFFUSION_API_KEY == "TUTAJ_WKLEJ_SWOJ_KLUCZ_API":
+    if not MODELSLAB_API_KEY or MODELSLAB_API_KEY == "YOUR_KEY":
         return await message.edit(
-            "<b>Stable Diffusion API Key not configured.</b>\n"
-            "Please add it to your <code>extra_config.env</code> file.",
+            "<b>ModelsLab API Key not configured.</b>\n"
+            "Please add <code>MODELSLAB_API_KEY</code> to your <code>extra_config.env</code> file.",
             del_in=ERROR_VISIBLE_DURATION
         )
 
@@ -39,22 +39,22 @@ async def imagine_handler(bot: BOT, message: Message):
 
     try:
         api_url = "https://modelslab.com/api/v6/images/text2img"
+        
         payload = {
-            "key": STABLE_DIFFUSION_API_KEY,
+            "key": MODELSLAB_API_KEY,
             "prompt": prompt,
-            "negative_prompt": "bad anatomy, blurry, low quality",
+            "negative_prompt": "ugly, disfigured, low quality, blurry, nsfw, text, watermark",
             "width": "512",
             "height": "512",
             "samples": "1",
             "num_inference_steps": "20",
+            "safety_checker": "yes",
+            "enhance_prompt": "yes",
             "seed": None,
-            "guidance_scale": 7.5,
-            "webhook": None,
-            "track_id": None,
+            "guidance_scale": 7.5
         }
         
         response = await asyncio.to_thread(requests.post, api_url, json=payload)
-        response.raise_for_status()
         response_data = response.json()
 
         if response_data.get("status") == "success":
@@ -68,12 +68,9 @@ async def imagine_handler(bot: BOT, message: Message):
             await progress_message.delete()
             await message.delete()
         else:
+            # Show the full API response for debugging if something goes wrong
             raise Exception(f"API returned non-success status: {response_data}")
 
     except Exception as e:
-        error_text = (
-            f"<b>Error:</b> Could not generate image.\n"
-            f"<b>Type:</b> <code>{type(e).__name__}</code>\n"
-            f"<b>Details:</b> <code>{html.escape(str(e))}</code>"
-        )
+        error_text = f"<b>Error:</b> Could not generate image.\n<code>{html.escape(str(e))}</code>"
         await progress_message.edit(error_text, del_in=ERROR_VISIBLE_DURATION)
