@@ -68,8 +68,7 @@ async def imagine_handler(bot: BOT, message: Message):
             await progress_message.delete()
             await message.delete()
         else:
-            error_msg = response_data.get("message", "Unknown API error.")
-            raise Exception(f"API Error: {error_msg}")
+            raise Exception(f"API returned non-success status: {response_data}")
 
     except Exception as e:
         error_text = (
