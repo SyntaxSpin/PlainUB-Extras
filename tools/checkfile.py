@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 from PIL import Image
 from PIL.ExifTags import TAGS
-from pyrogram.types import Message
+from pyrogram.types import Message, ReplyParameters
 
 from app import BOT, bot
 
@@ -142,7 +142,7 @@ async def checkfile_handler(bot: BOT, message: Message):
         await bot.send_message(
             chat_id=message.chat.id,
             text=final_report,
-            reply_to_message_id=replied_msg.id
+            reply_parameters=ReplyParameters(message_id=replied_msg.id)
         )
         
         await progress_message.delete()
