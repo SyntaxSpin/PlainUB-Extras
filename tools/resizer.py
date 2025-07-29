@@ -81,21 +81,24 @@ async def resize_handler(bot: BOT, message: Message):
         temp_files.append(original_path)
         
         await progress_message.edit(f"<code>Resizing to {width}x{height}...</code>")
-        
-        if replied_msg.photo:
+
+        is_image = replied_msg.photo or (replied_msg.document and replied_msg.document.mime_type.startswith("image/"))
+        is_video = replied_msg.video or (replied_msg.document and replied_msg.document.mime_type.startswith("video/"))
+        is_animation = replied_msg.animation
+
+        if is_image:
             resized_path = await asyncio.to_thread(sync_resize_image, original_path, width, height)
             temp_files.append(resized_path)
             await progress_message.edit("<code>Sending media...</code>")
-            await bot.send_photo(message.chat.id, photo=resized_path, caption=f"Resized to: `{width}x{height}`", reply_to_message_id=replied_msg.id)
+            await message.reply_photo(photo=resized_path, caption=f"Resized to: `{width}x{height}`")
         
-        elif replied_msg.video or replied_msg.animation:
+        elif is_video or is_animation:
             resized_path, thumb_path = await sync_resize_video_or_gif(original_path, width, height)
-            temp_files.extend([resized_path, thumb_path])
+            temp_files.extend([resized_path, thumb_path] if thumb_path else [resized_path])
 
             await progress_message.edit("<code>Sending media...</code>")
-            if replied_msg.video:
-                await bot.send_video(
-                    message.chat.id, 
+            if is_video:
+                await message.reply_video(
                     video=resized_path, 
                     caption=f"Resized to: `{width}x{height}`",
                     width=width,
@@ -104,8 +107,7 @@ async def resize_handler(bot: BOT, message: Message):
                     reply_to_message_id=replied_msg.id
                 )
             else:
-                await bot.send_animation(
-                    message.chat.id, 
+                await message.reply_animation(
                     animation=resized_path, 
                     caption=f"Resized to: `{width}x{height}`",
                     width=width,
@@ -114,7 +116,7 @@ async def resize_handler(bot: BOT, message: Message):
                     reply_to_message_id=replied_msg.id
                 )
         else:
-            raise ValueError("Unsupported media type.")
+            raise ValueError("Unsupported media type. Please reply to an image, GIF, or video.")
         
         await progress_message.delete()
         await message.delete()
