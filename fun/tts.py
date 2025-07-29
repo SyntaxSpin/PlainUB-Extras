@@ -54,7 +54,8 @@ async def tts_handler(bot: BOT, message: Message):
     file_path = ""
     try:
         file_path = await asyncio.to_thread(sync_gtts, text_to_speak, lang)
-        
+
+        await progress_message.edit("<code>Sending...</code>")
         await bot.send_voice(
             chat_id=message.chat.id,
             voice=file_path,
