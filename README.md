@@ -55,6 +55,22 @@ If you're deploying manually (without `EXTRA_MODULES_REPO`), you can also instal
 
 ---
 
+## 🛠️ Extra Configuration
+
+Some modules may require additional configuration, such as API keys or tokens. To configure them:
+
+1. Copy the example config file:
+
+   ```bash
+   cp example-extra_config.env extra_config.py
+   ```
+
+2. Open `extra_config.py` in a text editor and fill in your own API keys or tokens as needed.
+
+3. Restart your bot after saving the changes.
+
+---
+
 ## 📦 Install Requirements
 
 Some modules may require additional Python packages. To install all necessary dependencies from the `requirements.txt` file, run:
