@@ -11,7 +11,8 @@ from dotenv import load_dotenv
 from app import BOT, bot
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-ENV_PATH = os.path.join(SCRIPT_DIR, "extra_config.env")
+MODULES_DIR = os.path.dirname(SCRIPT_DIR)
+ENV_PATH = os.path.join(MODULES_DIR, "extra_config.env")
 load_dotenv(dotenv_path=ENV_PATH)
 
 VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY") 
