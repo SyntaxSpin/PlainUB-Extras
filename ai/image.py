@@ -56,7 +56,7 @@ def sync_add_watermark(image_url: str) -> io.BytesIO:
     
     return final_buffer
 
-@bot.add_cmd(cmd=["imagine", "dalle"])
+@bot.add_cmd(cmd=["imagine", "gen"])
 async def imagine_handler(bot: BOT, message: Message):
     """
     CMD: IMAGINE / DALLE
@@ -76,7 +76,7 @@ async def imagine_handler(bot: BOT, message: Message):
     try:
         api_url = "https://modelslab.com/api/v6/images/text2img"
         payload = {
-            "key": MODELSLAB_API_KEY, "model_id": "epicrealism_natural-sin-rc1-vae", 
+            "key": MODELSLAB_API_KEY, "model_id": "flux", 
             "prompt": prompt, "negative_prompt": "ugly, disfigured, low quality, blurry, nsfw",
             "width": "512", "height": "512", "samples": "1", "num_inference_steps": "20",
             "safety_checker": "yes", "enhance_prompt": "yes", "seed": None, "guidance_scale": 7.5
