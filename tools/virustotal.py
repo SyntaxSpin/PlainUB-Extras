@@ -39,7 +39,6 @@ def format_vt_report(data: dict, scan_type: str, resource_id: str, original_inpu
         header = "<b>VirusTotal File Report:</b>"
     else:
         header = f"<b>VirusTotal Report for {scan_type.capitalize()}:</b>\n<code>{html.escape(original_input)}</code>"
-    
     report_lines = [header]
     stats = data.get("last_analysis_stats", {})
     malicious = stats.get("malicious", 0); suspicious = stats.get("suspicious", 0)
@@ -64,18 +63,14 @@ def format_vt_report(data: dict, scan_type: str, resource_id: str, original_inpu
 async def virustotal_handler(bot: BOT, message: Message):
     if not VIRUSTOTAL_API_KEY or VIRUSTOTAL_API_KEY == "TUTAJ_WKLEJ_SWOJ_KLUCZ_API":
         return await message.edit("<b>VirusTotal API Key not configured.</b>", del_in=ERROR_VISIBLE_DURATION)
-    
     api_key = VIRUSTOTAL_API_KEY
-    if message.replied and message.replied.media:
-        await scan_file(api_key, message)
+    if message.replied and message.replied.media: await scan_file(api_key, message)
     elif message.input:
         if is_url(message.input): await scan_url(api_key, message)
         elif is_ip(message.input): await scan_domain_or_ip(api_key, message, "ip")
         elif is_domain(message.input): await scan_domain_or_ip(api_key, message, "domain")
         else: await message.edit("Invalid input.", del_in=ERROR_VISIBLE_DURATION)
-    else:
-        await message.edit("Reply to a file or provide a URL/domain/IP.", del_in=ERROR_VISIBLE_DURATION)
-
+    else: await message.edit("Reply to a file or provide a URL/domain/IP.", del_in=ERROR_VISIBLE_DURATION)
 
 async def scan_file(api_key: str, message: Message):
     progress = await message.reply("<code>Downloading...</code>")
@@ -100,9 +95,9 @@ async def scan_file(api_key: str, message: Message):
         for f in temp_files:
             if f and os.path.exists(f): os.remove(f)
 
-
 async def scan_url(api_key: str, message: Message):
-    progress = await message.edit("<code>Querying URL...</code>", disable_web_page_preview=True)
+    # This now sends a new progress message and edits it, then deletes the original command.
+    progress = await message.reply("<code>Querying URL...</code>")
     try:
         target_url = message.input
         url_id = base64.urlsafe_b64encode(target_url.encode()).decode().strip("=")
@@ -110,20 +105,19 @@ async def scan_url(api_key: str, message: Message):
         response = await asyncio.to_thread(requests.get, url, headers=headers)
         if response.status_code == 200: final_report = format_vt_report(response.json()["data"]["attributes"], "url", url_id, target_url)
         elif response.status_code == 404:
-            final_report = f"<b>VirusTotal Report for URL:</b>\n<code>{html.escape(target_url)}</code>\n<b>  - Status:</b> ⚪ Not in database. Submitting..."
+            final_report = f"<b>Report for URL:</b>\n<code>{html.escape(target_url)}</code>\n<b>  - Status:</b> ⚪ Not in database. Submitting..."
             post_url = f"{VT_API_URL}/urls"; post_data = {"url": target_url}
             await asyncio.to_thread(requests.post, post_url, data=post_data, headers=headers)
             final_report += "\n<i>  Check the report in a minute.</i>"
         else: final_report = f"<b>Report:</b>\n<b>  - Error:</b> API code {response.status_code}."
-        
-        # Edit the progress message with the final report.
         await progress.edit(final_report, link_preview_options=LinkPreviewOptions(is_disabled=True))
+        await message.delete() # Delete the original command
     except Exception as e:
         await progress.edit(f"<b>Error:</b> <code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
 
-
 async def scan_domain_or_ip(api_key: str, message: Message, scan_type: str):
-    progress = await message.edit(f"<code>Querying {scan_type.capitalize()}...</code>", disable_web_page_preview=True)
+    # This now sends a new progress message and edits it, then deletes the original command.
+    progress = await message.reply(f"<code>Querying {scan_type.capitalize()}...</code>")
     try:
         resource = message.input
         endpoint = "ip_addresses" if scan_type == "ip" else "domains"
@@ -132,8 +126,7 @@ async def scan_domain_or_ip(api_key: str, message: Message, scan_type: str):
         if response.status_code == 200: final_report = format_vt_report(response.json()["data"]["attributes"], scan_type, resource, resource)
         elif response.status_code == 404: final_report = f"<b>Report:</b>\n<b>  - Status:</b> ⚪ {scan_type.capitalize()} not found."
         else: final_report = f"<b>Report:</b>\n<b>  - Error:</b> API code {response.status_code}."
-            
-        # Edit the progress message with the final report.
         await progress.edit(final_report, link_preview_options=LinkPreviewOptions(is_disabled=True))
+        await message.delete() # Delete the original command
     except Exception as e:
         await progress.edit(f"<b>Error:</b> <code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
