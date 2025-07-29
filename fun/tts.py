@@ -2,7 +2,7 @@ import os
 import html
 import asyncio
 from gtts import gTTS
-from pyrogram.types import Message
+from pyrogram.types import Message, ReplyParameters
 
 from app import BOT, bot
 
@@ -59,7 +59,7 @@ async def tts_handler(bot: BOT, message: Message):
         await bot.send_voice(
             chat_id=message.chat.id,
             voice=file_path,
-            reply_to_message_id=message.reply_to_message_id
+            reply_parameters=ReplyParameters(message_id=message.reply_to_message_id or message.id)
         )
         await progress_message.delete()
         await message.delete()
