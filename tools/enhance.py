@@ -58,7 +58,7 @@ async def enhance_handler(bot: BOT, message: Message):
         await message.edit("Please reply to an image to enhance it.", del_in=ERROR_VISIBLE_DURATION)
         return
 
-    progress_message = await message.reply("<code>Downloading media...</code>")
+    progress_message = await message.reply("<code>Downloading photo...</code>")
     
     original_path, enhanced_path = "", ""
     temp_files = []
@@ -72,7 +72,7 @@ async def enhance_handler(bot: BOT, message: Message):
         enhanced_path, new_width, new_height = await asyncio.to_thread(sync_enhance_image, original_path)
         temp_files.append(enhanced_path)
         
-        await progress_message.edit("<code>Sending as document...</code>")
+        await progress_message.edit("<code>Sending photo as file...</code>")
         
         # Send the enhanced image as a document using the correct method
         await bot.send_document(
