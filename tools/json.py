@@ -2,27 +2,28 @@ import os
 import html
 import asyncio
 import json
+import io
 from pyrogram.types import Message, ReplyParameters
 
 from app import BOT, bot
 
 ERROR_VISIBLE_DURATION = 8
 
-def safe_escape(text: str) -> str:
-    """Escapes HTML characters for safe sending inside HTML tags."""
-    return html.escape(str(text))
-
 def json_cleaner(o):
-    """A custom serializer for json.dumps to handle Pyrogram objects."""
+    """
+    A custom serializer for json.dumps to handle Pyrogram objects.
+    It converts objects to their dictionary representation and censors sensitive data.
+    """
     if hasattr(o, '__dict__'):
         clean_dict = {}
         for key, value in o.__dict__.items():
             if not key.startswith('_'):
                 clean_dict[key] = value
-
+        
+        # Censor the phone number before returning the dictionary
         if "phone_number" in clean_dict and clean_dict["phone_number"]:
             clean_dict["phone_number"] = "[CENSORED]"
-
+            
         return clean_dict
     try:
         return str(o)
@@ -30,11 +31,11 @@ def json_cleaner(o):
         raise TypeError(f"Object of type {o.__class__.__name__} is not JSON serializable")
 
 
-@bot.add_cmd(cmd="json")
+@bot.add_cmd(cmd=["dev", "json"])
 async def dev_handler(bot: BOT, message: Message):
     """
-    CMD: JSON
-    INFO: Shows the raw Pyrogram message object as a formatted JSON.
+    CMD: DEV / JSON
+    INFO: Shows the raw Pyrogram message object as a JSON file.
     USAGE:
         .dev (shows info about the command message)
         .dev (in reply to a message, shows info about that message)
@@ -45,7 +46,7 @@ async def dev_handler(bot: BOT, message: Message):
     progress_message = await message.reply("<code>Serializing message object to JSON...</code>")
     
     try:
-        # Convert the message object to a clean, indented JSON string
+        # Convert the entire message object to a clean, indented JSON string
         message_data_str = json.dumps(
             target_message,
             indent=4,
@@ -53,26 +54,19 @@ async def dev_handler(bot: BOT, message: Message):
             ensure_ascii=False
         )
         
-        # 1. Escape only the JSON content
-        safe_json_content = safe_escape(message_data_str)
-        
-        # 2. Place it inside the simplified <pre> tag with a class
-        final_report = f'<pre class="language-json">{safe_json_content}</pre>'
-        
-        # Truncate if necessary
-        if len(final_report) > 4096:
-            overhead_len = len('<pre class="language-json"></pre>\n... (truncated)')
-            max_json_len = 4096 - overhead_len
+        # Prepare the data to be sent as a file in-memory
+        with io.BytesIO(message_data_str.encode('utf-8')) as doc:
+            doc.name = f"message_data_{target_message.id}.json"
             
-            truncated_data = safe_escape(message_data_str[:max_json_len])
-            final_report = f'<pre class="language-json">{truncated_data}\n... (truncated)</pre>'
-
-        # Send the report as a reply
-        await bot.send_message(
-            chat_id=message.chat.id,
-            text=final_report,
-            reply_parameters=ReplyParameters(message_id=target_message.id)
-        )
+            await progress_message.edit("<code>Sending data file...</code>")
+            
+            # Send the JSON file as a reply to the target message
+            await bot.send_document(
+                chat_id=message.chat.id,
+                document=doc,
+                caption=f"Raw JSON data for message ID: <code>{target_message.id}</code>",
+                reply_parameters=ReplyParameters(message_id=target_message.id)
+            )
         
         # Final cleanup
         await progress_message.delete()
