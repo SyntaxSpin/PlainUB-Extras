@@ -99,15 +99,10 @@ async def checkfile_handler(bot: BOT, message: Message):
         info_lines.append(f"<b>  - MIME Type:</b> <code>{getattr(media, 'mime_type', 'N/A')}</code>")
         info_lines.append(f"<b>  - File Size:</b> <code>{format_bytes(getattr(media, 'file_size', 0))}</code>")
         
-        # 2. Filesystem Metadata
-        fs_stat = os.stat(original_path)
-        info_lines.append(f"<b>  - Modified:</b> <code>{datetime.fromtimestamp(fs_stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')}</code>")
-        info_lines.append(f"<b>  - Created:</b> <code>{datetime.fromtimestamp(fs_stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S')}</code>")
-        
-        # 3. Advanced Analysis with FFprobe (for A/V) and Pillow (for images)
+        # 2. Advanced Analysis with FFprobe (for A/V) and Pillow (for images)
         probe_data = await get_probe_data(original_path)
         if probe_data:
-            info_lines.append("\n<b>Technical Details (from FFprobe):</b>")
+            info_lines.append("\n<b>Technical Details:</b>")
             
             video_stream = next((s for s in probe_data.get("streams", []) if s.get("codec_type") == "video"), None)
             if video_stream:
@@ -132,7 +127,7 @@ async def checkfile_handler(bot: BOT, message: Message):
                 if bit_rate > 0:
                     info_lines.append(f"    - Bitrate: <code>{round(bit_rate / 1000)} kb/s</code>")
         
-        # 4. EXIF Data for Images
+        # 3. EXIF Data for Images
         exif_data = get_exif_data(original_path)
         if exif_data:
             info_lines.append("\n<b>EXIF Data:</b>")
