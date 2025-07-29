@@ -55,9 +55,9 @@ async def sync_resize_video_or_gif(input_path: str, width: int, height: int) -> 
 @bot.add_cmd(cmd="resize")
 async def resize_handler(bot: BOT, message: Message):
     replied_msg = message.replied
-    if not replied_msg or not replied_msg.media:
-        await message.edit("Please reply to an image, GIF, or video to resize it.", del_in=ERROR_VISIBLE_DURATION)
-        return
+    is_media = replied_msg and (replied_msg.photo or replied_msg.video or replied_msg.animation or (replied_msg.document and replied_msg.document.mime_type.startswith(("image/", "video/"))))
+    if not is_media:
+        return await message.edit("Please reply to an image, GIF, or video to resize it.", del_in=ERROR_VISIBLE_DURATION)
 
     if not message.input:
         await message.edit("Please specify the new resolution. Usage: `.resize 1920x1080`", del_in=ERROR_VISIBLE_DURATION)
