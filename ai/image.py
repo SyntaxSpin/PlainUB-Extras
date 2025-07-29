@@ -44,7 +44,7 @@ def sync_add_watermark(image_url: str) -> io.BytesIO:
     
     resized_logo = logo.resize((logo_width, new_logo_height), Image.Resampling.LANCZOS)
     
-    padding = 20
+    padding = 0
     position = (main_width - resized_logo.width - padding, main_height - resized_logo.height - padding)
     
     main_image.paste(resized_logo, position, resized_logo)
@@ -71,7 +71,7 @@ async def imagine_handler(bot: BOT, message: Message):
         return await message.edit("Please provide a text prompt.", del_in=ERROR_VISIBLE_DURATION)
 
     prompt = message.input
-    progress_message = await message.reply("<code>Generating image... (this may take 20-40 seconds)</code>")
+    progress_message = await message.reply("<code>Generating image...</code>")
 
     try:
         api_url = "https://modelslab.com/api/v6/images/text2img"
