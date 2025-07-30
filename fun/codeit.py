@@ -1,0 +1,113 @@
+import os
+import html
+import asyncio
+import uuid
+from pyrogram.types import Message, ReplyParameters
+
+from app import BOT, bot
+
+TEMP_DIR = "temp_codeit/"
+os.makedirs(TEMP_DIR, exist_ok=True)
+ERROR_VISIBLE_DURATION = 8
+
+LANGUAGES = {
+    "python": ("Python", "py"), "py": ("Python", "py"),
+    "java": ("Java", "java"),
+    "c++": ("C++", "cpp"), "cpp": ("C++", "cpp"),
+    "javascript": ("JavaScript", "js"), "js": ("JavaScript", "js"),
+    "c#": ("C#", "cs"), "cs": ("C#", "cs"),
+    "html": ("HTML", "html"),
+}
+
+def generate_code(language: str, text: str) -> str:
+    """Generates a 'Hello, World!'-style program for the given language and text."""
+    escaped_text = text.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+    code_templates = {
+        "Python": f'print("{escaped_text}")',
+        "Java": f'public class Main {{\n    public static void main(String[] args) {{\n        System.out.println("{escaped_text}");\n    }}\n}}',
+        "C++": f'#include <iostream>\n\nint main() {{\n    std::cout << "{escaped_text}";\n    return 0;\n}}',
+        "JavaScript": f'console.log("{escaped_text}");',
+        "C#": f'using System;\n\nclass Program {{\n    static void Main(string[] args) {{\n        Console.WriteLine("{escaped_text}");\n    }}\n}}',
+        "HTML": f'<!DOCTYPE html>\n<html>\n<head><title>Message</title></head>\n<body>\n    <p>{html.escape(text)}</p>\n</body>\n</html>'
+    }
+    return code_templates.get(language, f"// Language '{language}' not supported.")
+
+def sync_save_code_to_file(code_string: str, file_ext: str) -> str:
+    """Saves the code string to a unique temporary file and returns the path."""
+    unique_id = str(uuid.uuid4())
+    output_path = os.path.join(TEMP_DIR, f"main_{unique_id}.{file_ext}")
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(code_string)
+    return output_path
+
+def safe_escape(text: str) -> str:
+    """Escapes HTML characters for safe sending."""
+    return html.escape(str(text))
+
+@bot.add_cmd(cmd="codeit")
+async def codeit_handler(bot: BOT, message: Message):
+    """
+    CMD: CODEIT
+    INFO: Turns a text message into a program file with a code preview.
+    USAGE:
+        .codeit [lang] (text)
+        .codeit [lang] (in reply to a message)
+    """
+    replied_msg = message.replied
+    
+    if not message.input:
+        return await message.edit("<b>Usage:</b> .codeit <language> [text]", del_in=ERROR_VISIBLE_DURATION)
+
+    parts = message.input.split(maxsplit=1)
+    lang_alias = parts[0].lower()
+    
+    if lang_alias not in LANGUAGES:
+        return await message.edit(f"Unsupported language: <code>{lang_alias}</code>.", del_in=ERROR_VISIBLE_DURATION)
+
+    lang_name, file_ext = LANGUAGES[lang_alias]
+    
+    text_to_code = ""
+    if len(parts) > 1:
+        text_to_code = parts[1]
+    elif replied_msg and replied_msg.text:
+        text_to_code = replied_msg.text
+    else:
+        return await message.edit("Please provide text or reply to a text message.", del_in=ERROR_VISIBLE_DURATION)
+
+    progress_message = await message.reply("<code>Generating code...</code>")
+    
+    output_path = ""
+    temp_files = []
+    try:
+        code_output = generate_code(lang_name, text_to_code)
+        
+        output_path = await asyncio.to_thread(sync_save_code_to_file, code_output, file_ext)
+        temp_files.append(output_path)
+        
+        preview_code = safe_escape(code_output)
+        caption = f'<pre class="language-{lang_name.lower()}">{preview_code}</pre>'
+        
+        if len(caption) > 1024:
+            overhead_len = len(f'<pre class="language-{lang_name.lower()}"></pre>\n... (truncated)')
+            max_code_len = 1024 - overhead_len
+            truncated_code = safe_escape(code_output[:max_code_len])
+            caption = f'<pre class="language-{lang_name.lower()}">{truncated_code}\n... (truncated)</pre>'
+        
+        reply_target = replied_msg or message
+        await bot.send_document(
+            chat_id=message.chat.id,
+            document=output_path,
+            caption=caption,
+            reply_parameters=ReplyParameters(message_id=reply_target.id)
+        )
+        
+        await progress_message.delete()
+        await message.delete()
+
+    except Exception as e:
+        error_text = f"<b>Error:</b> Could not generate code.\n<code>{html.escape(str(e))}</code>"
+        await progress_message.edit(error_text, del_in=ERROR_VISIBLE_DURATION)
+    finally:
+        for f in temp_files:
+            if f and os.path.exists(f):
+                os.remove(f)
