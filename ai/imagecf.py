@@ -1,12 +1,10 @@
-# imagine.py (Cloudflare AI version)
-
 import os
 import html
 import asyncio
 import requests
-import io
 from pyrogram.types import Message, ReplyParameters
 from dotenv import load_dotenv
+from PIL import Image
 
 from app import BOT, bot
 
@@ -18,56 +16,94 @@ load_dotenv(dotenv_path=ENV_PATH)
 CF_ACCOUNT_ID = os.getenv("CF_ACCOUNT_ID")
 CF_API_TOKEN = os.getenv("CF_API_TOKEN")
 
+UBOT_DIR = os.path.dirname(os.path.dirname(MODULES_DIR)) 
+LOGO_PATH = os.path.join(UBOT_DIR, "assets", "white.png")
+
+TEMP_DIR = "temp_imagine/"
+os.makedirs(TEMP_DIR, exist_ok=True)
 ERROR_VISIBLE_DURATION = 8
 
-@bot.add_cmd(cmd=["image", "generate"])
+def sync_add_watermark(image_path: str) -> str:
+    """Opens an image from a file, adds a watermark, and saves it to a new file."""
+    
+    base, ext = os.path.splitext(os.path.basename(image_path))
+    output_path = os.path.join(TEMP_DIR, f"{base}_wm.png")
+
+    main_image = Image.open(image_path).convert("RGBA")
+    
+    if not os.path.exists(LOGO_PATH):
+        main_image.save(output_path, "PNG")
+        return output_path
+        
+    logo = Image.open(LOGO_PATH).convert("RGBA")
+    
+    main_width, main_height = main_image.size
+    logo_width = main_width // 8
+    logo_ratio = logo.height / logo.width
+    new_logo_height = int(logo_width * logo_ratio)
+    
+    resized_logo = logo.resize((logo_width, new_logo_height), Image.Resampling.LANCZOS)
+    
+    padding = 0
+    position = (main_width - resized_logo.width - padding, main_height - resized_logo.height - padding)
+    
+    main_image.paste(resized_logo, position, resized_logo)
+    
+    main_image.save(output_path, "PNG")
+    
+    return output_path
+
+@bot.add_cmd(cmd=["imagine", "dalle"])
 async def imagine_handler(bot: BOT, message: Message):
     """
-    CMD: IMAGE / GENERATE
-    INFO: Generates an image from a text prompt using Cloudflare AI.
+    CMD: IMAGINE / DALLE
+    INFO: Generates an image from a text prompt and adds a watermark.
     USAGE:
         .imagine <text prompt>
     """
-    if not CF_ACCOUNT_ID or not CF_API_TOKEN or "YOUR_KEY" in CF_API_TOKEN:
-        return await message.edit(
-            "<b>Cloudflare AI not configured.</b>\n"
-            "Please add <code>CF_ACCOUNT_ID</code> and <code>CF_API_TOKEN</code> to your <code>extra_config.env</code> file.",
-            del_in=ERROR_VISIBLE_DURATION
-        )
+    if not CF_ACCOUNT_ID or not CF_API_TOKEN or "TUTAJ_WKLEJ" in CF_API_TOKEN:
+        return await message.edit("<b>Cloudflare AI not configured.</b>", del_in=ERROR_VISIBLE_DURATION)
 
     if not message.input:
-        return await message.edit("Please provide a text prompt to generate an image.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.edit("Please provide a text prompt.", del_in=ERROR_VISIBLE_DURATION)
 
     prompt = message.input
-    progress_message = await message.reply("<code>Generating image with Cloudflare AI... (this may take a moment)</code>")
-
+    progress_message = await message.reply("<code>Generating...</code>")
+    
+    generated_path, watermarked_path = "", ""
+    temp_files = []
     try:
         api_url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/ai/run/@cf/stabilityai/stable-diffusion-xl-base-1.0"
-        
         headers = {"Authorization": f"Bearer {CF_API_TOKEN}"}
         payload = {"prompt": prompt}
         
         response = await asyncio.to_thread(requests.post, api_url, headers=headers, json=payload)
 
-        # Cloudflare returns the image directly as binary data, not a JSON response with a URL
         if response.ok:
-            # The image data is in response.content
-            image_buffer = io.BytesIO(response.content)
-            image_buffer.name = "generated_by_cf.png"
+            generated_path = os.path.join(TEMP_DIR, "generated_image.png")
+            with open(generated_path, "wb") as f:
+                f.write(response.content)
+            temp_files.append(generated_path)
+            
+            watermarked_path = await asyncio.to_thread(sync_add_watermark, generated_path)
+            temp_files.append(watermarked_path)
             
             await bot.send_photo(
                 chat_id=message.chat.id,
-                photo=image_buffer,
+                photo=watermarked_path,
                 caption=f"<b>Prompt:</b> <code>{html.escape(prompt)}</code>",
                 reply_parameters=ReplyParameters(message_id=message.id)
             )
             await progress_message.delete()
             await message.delete()
         else:
-            # If the API returns an error, show the details
             error_details = response.json()
             raise Exception(f"API Error: {error_details}")
 
     except Exception as e:
         error_text = f"<b>Error:</b> Could not generate image.\n<code>{html.escape(str(e))}</code>"
         await progress_message.edit(error_text, del_in=ERROR_VISIBLE_DURATION)
+    finally:
+        for f in temp_files:
+            if f and os.path.exists(f):
+                os.remove(f)
