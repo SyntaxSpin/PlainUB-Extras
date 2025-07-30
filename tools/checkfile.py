@@ -95,7 +95,7 @@ async def checkfile_handler(bot: BOT, message: Message):
             audio_stream = next((s for s in streams if s.get("codec_type") == "audio"), None)
 
             if video_stream:
-                info_lines.append("<b>  Video Stream:</b>")
+                info_lines.append("<b>  Media Stream:</b>")
                 info_lines.append(f"    - Resolution: <code>{video_stream.get('width')}x{video_stream.get('height')}</code>")
                 info_lines.append(f"    - Codec: <code>{video_stream.get('codec_long_name', 'N/A')}</code> (<code>{video_stream.get('codec_name', 'N/A')}</code>)")
                 info_lines.append(f"    - Profile: <code>{video_stream.get('profile', 'N/A')}</code>")
