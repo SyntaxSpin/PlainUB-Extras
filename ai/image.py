@@ -17,7 +17,7 @@ CF_ACCOUNT_ID = os.getenv("CF_ACCOUNT_ID")
 CF_API_TOKEN = os.getenv("CF_API_TOKEN")
 
 UBOT_DIR = os.path.dirname(os.path.dirname(MODULES_DIR)) 
-LOGO_PATH = os.path.join(UBOT_DIR, "assets", "white.png")
+LOGO_PATH = os.path.join(UBOT_DIR, "assets", "light.png")
 
 TEMP_DIR = "temp_imagine/"
 os.makedirs(TEMP_DIR, exist_ok=True)
