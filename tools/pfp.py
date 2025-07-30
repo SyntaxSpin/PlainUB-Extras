@@ -12,7 +12,7 @@ async def pfp_handler(bot: BOT, message: Message):
     INFO: Fetches a user's current profile picture (or video thumbnail).
     USAGE:
         .pfp (on yourself)
-        .pfp <user_id/username>
+        .pfp [user_id/username]
         .pfp (in reply to a user)
     """
     target_user: User = None
