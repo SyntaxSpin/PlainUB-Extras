@@ -1,8 +1,7 @@
 import os
 import html
 import asyncio
-import re
-from pyrogram.types import Message
+from pyrogram.types import Message, ReplyParameters
 
 from app import BOT, bot
 
@@ -22,15 +21,12 @@ async def run_command(command: str) -> tuple[str, str, int]:
     )
 
 async def sync_change_speed(input_path: str, speed_factor: float) -> str:
-    """
-    Synchronously changes the speed of a video or audio file using FFmpeg.
-    """
+    """Synchronously changes the speed of a video or audio file using FFmpeg."""
     base, ext = os.path.splitext(os.path.basename(input_path))
     output_path = os.path.join(TEMP_DIR, f"{base}_speed_{speed_factor}x{ext}")
     
-    video_filter = f'[0:v]setpts={1/speed_factor}*PTS[v]'
-    audio_filter = f'[0:a]atempo={speed_factor}[a]'
-    
+    video_filter = f"[0:v]setpts={1/speed_factor}*PTS[v]"
+    audio_filter = f"[0:a]atempo={speed_factor}[a]"
     
     command = (
         f'ffmpeg -i "{input_path}" '
@@ -39,7 +35,10 @@ async def sync_change_speed(input_path: str, speed_factor: float) -> str:
         f'-y "{output_path}"'
     )
     
-    if not input_path.lower().endswith(('.mp4', '.mkv', '.mov', '.webm')):
+    media_obj = next((m for m in [message.replied.video, message.replied.audio, message.replied.voice, message.replied.document] if m), None)
+    is_video = media_obj and getattr(media_obj, 'mime_type', '').startswith('video/')
+
+    if not is_video:
          command = (
             f'ffmpeg -i "{input_path}" '
             f'-filter:a "atempo={speed_factor}" '
@@ -55,9 +54,9 @@ async def sync_change_speed(input_path: str, speed_factor: float) -> str:
                 f'-y "{output_path}"'
             )
             _, stderr, code = await run_command(command)
-            if code != 0: raise RuntimeError(f"FFmpeg speed change failed even without audio: {stderr}")
+            if code != 0: raise RuntimeError(f"FFmpeg failed (no audio): {stderr}")
         else:
-            raise RuntimeError(f"FFmpeg speed change failed: {stderr}")
+            raise RuntimeError(f"FFmpeg failed: {stderr}")
         
     return output_path
 
@@ -70,6 +69,7 @@ async def speed_handler(bot: BOT, message: Message):
     USAGE:
         .speed [factor] (e.g., .speed 2 for 2x faster, .speed 0.5 for 2x slower)
     """
+    global message
     replied_msg = message.replied
     is_media = replied_msg and (replied_msg.video or replied_msg.audio or replied_msg.voice or (replied_msg.document and replied_msg.document.mime_type.startswith(("video/", "audio/"))))
     if not is_media:
@@ -79,7 +79,7 @@ async def speed_handler(bot: BOT, message: Message):
         return await message.edit("Please specify a speed factor. Usage: `.speed 2.0`", del_in=ERROR_VISIBLE_DURATION)
 
     try:
-        speed_factor = float(message.input)
+        speed_factor = float(message.input.strip())
         if not (0.5 <= speed_factor <= 4.0):
             raise ValueError("Speed factor must be between 0.5 and 4.0 for this tool.")
     except ValueError:
@@ -102,12 +102,17 @@ async def speed_handler(bot: BOT, message: Message):
 
         caption = f"Speed changed to: `{speed_factor}x`"
         
-        if replied_msg.video or (replied_msg.document and replied_msg.document.mime_type.startswith("video/")):
-            await bot.send_video(message.chat.id, video=modified_path, caption=caption, reply_to_message_id=replied_msg.id)
+        media_obj = next((m for m in [replied_msg.video, replied_msg.audio, replied_msg.voice, replied_msg.document] if m), None)
+        is_video = media_obj and getattr(media_obj, 'mime_type', '').startswith('video/')
+
+        reply_params = ReplyParameters(message_id=replied_msg.id)
+
+        if is_video:
+            await bot.send_video(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
         elif replied_msg.voice:
-             await bot.send_voice(message.chat.id, voice=modified_path, caption=caption, reply_to_message_id=replied_msg.id)
-        else: # Audio
-            await bot.send_audio(message.chat.id, audio=modified_path, caption=caption, reply_to_message_id=replied_msg.id)
+             await bot.send_voice(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
+        else:
+            await bot.send_audio(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
         
         await progress_message.delete()
         await message.delete()
