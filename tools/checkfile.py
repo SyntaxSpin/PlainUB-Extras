@@ -78,36 +78,38 @@ async def checkfile_handler(bot: BOT, message: Message):
     original_path = ""
     temp_files = []
     try:
-        media = (
+        media_object = (
             replied_msg.photo or replied_msg.video or replied_msg.animation or
             replied_msg.document or replied_msg.audio or replied_msg.voice or
             replied_msg.sticker
         )
 
-        original_path = await bot.download_media(media, file_name=os.path.join(TEMP_DIR, ""))
+        # Then download that specific object, not the whole message
+        original_path = await bot.download_media(media_object, file_name=os.path.join(TEMP_DIR, ""))
         temp_files.append(original_path)
         
         await progress_message.edit("<code>Analyzing...</code>")
         
-        # --- Build the comprehensive report ---
         info_lines = ["<b>File Information:</b>"]
 
-        # 1. Basic Info from Telegram
-        file_name = getattr(media, 'file_name', os.path.basename(original_path) if original_path else 'N/A')
+        file_name = getattr(media_object, 'file_name', os.path.basename(original_path) if original_path else 'N/A')
         info_lines.append(f"<b>  - File Name:</b> <code>{html.escape(str(file_name))}</code>")
         info_lines.append(f"<b>  - Extension:</b> <code>{os.path.splitext(file_name)[1][1:].upper() if '.' in file_name else 'N/A'}</code>")
-        info_lines.append(f"<b>  - MIME Type:</b> <code>{getattr(media, 'mime_type', 'N/A')}</code>")
-        info_lines.append(f"<b>  - File Size:</b> <code>{format_bytes(getattr(media, 'file_size', 0))}</code>")
+        info_lines.append(f"<b>  - MIME Type:</b> <code>{getattr(media_object, 'mime_type', 'N/A')}</code>")
+        info_lines.append(f"<b>  - File Size:</b> <code>{format_bytes(getattr(media_object, 'file_size', 0))}</code>")
         
-        # 2. Advanced Analysis with FFprobe (for A/V) and Pillow (for images)
+        fs_stat = os.stat(original_path)
+        info_lines.append(f"<b>  - Modified:</b> <code>{datetime.fromtimestamp(fs_stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')}</code>")
+        info_lines.append(f"<b>  - Created:</b> <code>{datetime.fromtimestamp(fs_stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S')}</code>")
+        
         probe_data = await get_probe_data(original_path)
         if probe_data:
-            info_lines.append("\n<b>Technical Details:</b>")
-
+            info_lines.append("\n<b>Technical Details (from FFprobe):</b>")
+            
             streams = probe_data.get("streams") or []
             video_stream = next((s for s in streams if s.get("codec_type") == "video"), None)
             audio_stream = next((s for s in streams if s.get("codec_type") == "audio"), None)
-            
+
             if video_stream:
                 info_lines.append("<b>  Video Stream:</b>")
                 info_lines.append(f"    - Resolution: <code>{video_stream.get('width')}x{video_stream.get('height')}</code>")
@@ -117,8 +119,7 @@ async def checkfile_handler(bot: BOT, message: Message):
                     fps = round(num / den, 2) if den != 0 else 0
                     info_lines.append(f"    - Framerate: <code>{fps} FPS</code>")
                 bit_rate = int(video_stream.get('bit_rate', 0))
-                if bit_rate > 0:
-                    info_lines.append(f"    - Bitrate: <code>{round(bit_rate / 1000)} kb/s</code>")
+                if bit_rate > 0: info_lines.append(f"    - Bitrate: <code>{round(bit_rate / 1000)} kb/s</code>")
 
             if audio_stream:
                 info_lines.append("<b>  Audio Stream:</b>")
@@ -126,17 +127,14 @@ async def checkfile_handler(bot: BOT, message: Message):
                 info_lines.append(f"    - Sample Rate: <code>{audio_stream.get('sample_rate')} Hz</code>")
                 info_lines.append(f"    - Channels: <code>{audio_stream.get('channels')}</code> ({audio_stream.get('channel_layout')})")
                 bit_rate = int(audio_stream.get('bit_rate', 0))
-                if bit_rate > 0:
-                    info_lines.append(f"    - Bitrate: <code>{round(bit_rate / 1000)} kb/s</code>")
+                if bit_rate > 0: info_lines.append(f"    - Bitrate: <code>{round(bit_rate / 1000)} kb/s</code>")
         
-        # 3. EXIF Data for Images
         exif_data = get_exif_data(original_path)
         if exif_data:
             info_lines.append("\n<b>EXIF Data:</b>")
-            # Show a limited number of important tags
             important_tags = ["Make", "Model", "DateTime", "Software", "FNumber", "ExposureTime"]
             for tag, value in exif_data.items():
-                if tag in important_tags and len(value) < 50: # Avoid very long values
+                if tag in important_tags and len(value) < 50:
                     info_lines.append(f"<b>  - {tag}:</b> <code>{html.escape(value)}</code>")
 
         final_report = "\n".join(info_lines)
@@ -144,7 +142,7 @@ async def checkfile_handler(bot: BOT, message: Message):
         await bot.send_message(
             chat_id=message.chat.id,
             text=final_report,
-            reply_parameters=ReplyParameters(message_id=replied_msg.id)
+            reply_to_message_id=replied_msg.id
         )
         
         await progress_message.delete()
