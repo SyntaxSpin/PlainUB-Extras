@@ -60,8 +60,8 @@ async def imagine_handler(bot: BOT, message: Message):
     CMD: IMAGE / GEN
     INFO: Generates an image from a text prompt and adds a watermark (BETA).
     USAGE:
-        .image <text prompt>
-        .gen <text prompt>
+        .image [text prompt]
+        .gen [text prompt]
     """
     if not CF_ACCOUNT_ID or not CF_API_TOKEN or "YOUR_KEY" in CF_API_TOKEN:
         return await message.edit("<b>Cloudflare AI not configured.</b>", del_in=ERROR_VISIBLE_DURATION)
