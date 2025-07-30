@@ -78,13 +78,13 @@ async def checkfile_handler(bot: BOT, message: Message):
     original_path = ""
     temp_files = []
     try:
-        media_object = (
+        media = (
             replied_msg.photo or replied_msg.video or replied_msg.animation or
             replied_msg.document or replied_msg.audio or replied_msg.voice or
             replied_msg.sticker
         )
 
-        original_path = await bot.download_media(media_object, file_name=os.path.join(TEMP_DIR, ""))
+        original_path = await bot.download_media(media, file_name=os.path.join(TEMP_DIR, ""))
         temp_files.append(original_path)
         
         await progress_message.edit("<code>Analyzing...</code>")
