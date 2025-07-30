@@ -78,7 +78,7 @@ async def all_unban_handler(bot: BOT, message: Message):
     CMD: UNABAN
     INFO: Executes UN-FBAN and UN-GBAN simultaneously.
     USAGE:
-        .unaban <user_id/reply> [reason]
+        .unaban [user_id/reply] [reason]
     """
     progress: Message = await message.reply("❯")
 
