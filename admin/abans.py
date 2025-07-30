@@ -18,8 +18,8 @@ async def all_ban_handler(bot: BOT, message: Message):
     CMD: ABAN / ABANP
     INFO: Executes FBAN and GBAN simultaneously.
     USAGE:
-        .aban <user_id/reply> [reason]
-        .abanp <reply to a proof> [reason]
+        .aban [user_id/reply] [reason]
+        .abanp [reply to a proof] [reason]
     """
     progress: Message = await message.reply("❯")
 
