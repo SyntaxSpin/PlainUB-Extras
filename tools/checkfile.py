@@ -103,8 +103,11 @@ async def checkfile_handler(bot: BOT, message: Message):
         probe_data = await get_probe_data(original_path)
         if probe_data:
             info_lines.append("\n<b>Technical Details:</b>")
+
+            streams = probe_data.get("streams") or []
+            video_stream = next((s for s in streams if s.get("codec_type") == "video"), None)
+            audio_stream = next((s for s in streams if s.get("codec_type") == "audio"), None)
             
-            video_stream = next((s for s in probe_data.get("streams", []) if s.get("codec_type") == "video"), None)
             if video_stream:
                 info_lines.append("<b>  Video Stream:</b>")
                 info_lines.append(f"    - Resolution: <code>{video_stream.get('width')}x{video_stream.get('height')}</code>")
@@ -117,7 +120,6 @@ async def checkfile_handler(bot: BOT, message: Message):
                 if bit_rate > 0:
                     info_lines.append(f"    - Bitrate: <code>{round(bit_rate / 1000)} kb/s</code>")
 
-            audio_stream = next((s for s in probe_data.get("streams", []) if s.get("codec_type") == "audio"), None)
             if audio_stream:
                 info_lines.append("<b>  Audio Stream:</b>")
                 info_lines.append(f"    - Codec: <code>{audio_stream.get('codec_long_name')}</code> ({audio_stream.get('codec_name')})")
