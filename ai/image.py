@@ -58,7 +58,7 @@ def sync_add_watermark(image_path: str) -> str:
 async def imagine_handler(bot: BOT, message: Message):
     """
     CMD: IMAGE / GEN
-    INFO: Generates an image from a text prompt and adds a watermark (BETA).
+    INFO: Generates an image from a text prompt (BETA).
     USAGE:
         .image [text prompt]
         .gen [text prompt]
