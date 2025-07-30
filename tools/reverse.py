@@ -82,7 +82,7 @@ async def reverse_handler(bot: BOT, message: Message):
         
         is_video = bool(replied_msg.video or (replied_msg.document and replied_msg.document.mime_type.startswith('video/')))
         
-        await progress_message.edit("<code>Reversing... (this can be slow for long files)</code>")
+        await progress_message.edit("<code>Reversing...</code>")
         
         modified_path = await sync_reverse_media(original_path, is_video)
         temp_files.append(modified_path)
