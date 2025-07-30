@@ -57,7 +57,7 @@ def sync_add_watermark(image_path: str) -> str:
 async def imagine_handler(bot: BOT, message: Message):
     """
     CMD: IMAGE / GEN
-    INFO: Generates an image from a text prompt and adds a watermark.
+    INFO: Generates an image from a text prompt and adds a watermark (BETA).
     USAGE:
         .imagine <text prompt>
     """
@@ -80,7 +80,8 @@ async def imagine_handler(bot: BOT, message: Message):
         response = await asyncio.to_thread(requests.post, api_url, headers=headers, json=payload)
 
         if response.ok:
-            generated_path = os.path.join(TEMP_DIR, "generated_image.png")
+            unique_id = str(uuid.uuid4())
+            generated_path = os.path.join(TEMP_DIR, f"{unique_id}.png")
             with open(generated_path, "wb") as f:
                 f.write(response.content)
             temp_files.append(generated_path)
