@@ -1,5 +1,6 @@
 import os
 import html
+import uuid
 import asyncio
 import requests
 from pyrogram.types import Message, ReplyParameters
