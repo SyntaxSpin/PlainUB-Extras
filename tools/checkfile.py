@@ -98,13 +98,9 @@ async def checkfile_handler(bot: BOT, message: Message):
         info_lines.append(f"<b>  - MIME Type:</b> <code>{getattr(media_object, 'mime_type', 'N/A')}</code>")
         info_lines.append(f"<b>  - File Size:</b> <code>{format_bytes(getattr(media_object, 'file_size', 0))}</code>")
         
-        fs_stat = os.stat(original_path)
-        info_lines.append(f"<b>  - Modified:</b> <code>{datetime.fromtimestamp(fs_stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')}</code>")
-        info_lines.append(f"<b>  - Created:</b> <code>{datetime.fromtimestamp(fs_stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S')}</code>")
-        
         probe_data = await get_probe_data(original_path)
         if probe_data:
-            info_lines.append("\n<b>Technical Details (from FFprobe):</b>")
+            info_lines.append("\n<b>Technical Details:</b>")
             
             streams = probe_data.get("streams") or []
             video_stream = next((s for s in streams if s.get("codec_type") == "video"), None)
