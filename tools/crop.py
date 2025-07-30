@@ -50,7 +50,7 @@ async def crop_handler(bot: BOT, message: Message):
     CMD: CROP
     INFO: Crops the replied image from the center to specified dimensions.
     USAGE:
-        .crop <width>x<height> (e.g., .crop 1280x720)
+        .crop [width]x[height] (e.g., .crop 1280x720)
     """
     replied_msg = message.replied
     is_photo = replied_msg and (replied_msg.photo or (replied_msg.document and replied_msg.document.mime_type.startswith("image/")))
