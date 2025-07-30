@@ -28,7 +28,7 @@ async def imagine_handler(bot: BOT, message: Message):
     USAGE:
         .imagine <text prompt>
     """
-    if not CF_ACCOUNT_ID or not CF_API_TOKEN or "YOUR_API_KEY" in CF_API_TOKEN:
+    if not CF_ACCOUNT_ID or not CF_API_TOKEN or "YOUR_KEY" in CF_API_TOKEN:
         return await message.edit(
             "<b>Cloudflare AI not configured.</b>\n"
             "Please add <code>CF_ACCOUNT_ID</code> and <code>CF_API_TOKEN</code> to your <code>extra_config.env</code> file.",
