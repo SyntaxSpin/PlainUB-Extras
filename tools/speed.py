@@ -68,7 +68,7 @@ async def speed_handler(bot: BOT, message: Message):
     CMD: SPEED
     INFO: Speeds up or slows down the replied video/audio.
     USAGE:
-        .speed <factor> (e.g., .speed 2 for 2x faster, .speed 0.5 for 2x slower)
+        .speed [factor] (e.g., .speed 2 for 2x faster, .speed 0.5 for 2x slower)
     """
     replied_msg = message.replied
     is_media = replied_msg and (replied_msg.video or replied_msg.audio or replied_msg.voice or (replied_msg.document and replied_msg.document.mime_type.startswith(("video/", "audio/"))))
