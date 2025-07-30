@@ -53,7 +53,7 @@ def sync_add_watermark(image_path: str) -> str:
     
     return output_path
 
-@bot.add_cmd(cmd=["imagine", "dalle"])
+@bot.add_cmd(cmd=["image", "gen"])
 async def imagine_handler(bot: BOT, message: Message):
     """
     CMD: IMAGINE / DALLE
