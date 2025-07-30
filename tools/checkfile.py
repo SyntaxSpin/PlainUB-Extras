@@ -79,7 +79,7 @@ async def checkfile_handler(bot: BOT, message: Message):
             info_lines.append("\n<b>Technical Details:</b>")
             
             format_section = probe_data.get("format", {})
-            format_tags = format_section.get("tags", {})
+            format_tags = format_section.get("tags") or {}
             if format_tags or "duration" in format_section:
                 info_lines.append("<b>  Format / Container:</b>")
                 if "duration" in format_section:
