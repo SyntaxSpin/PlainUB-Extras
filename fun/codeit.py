@@ -17,6 +17,14 @@ LANGUAGES = {
     "javascript": ("JavaScript", "js"), "js": ("JavaScript", "js"),
     "c#": ("C#", "cs"), "cs": ("C#", "cs"),
     "html": ("HTML", "html"),
+    "kotlin": ("Kotlin", "kt"), "kt": ("Kotlin", "kt"),
+    "assembly": ("Assembly", "asm"), "asm": ("Assembly", "asm"),
+    "go": ("Go", "go"), "golang": ("Go", "go"),
+    "rust": ("Rust", "rs"), "rs": ("Rust", "rs"),
+    "swift": ("Swift", "swift"),
+    "ruby": ("Ruby", "rb"), "rb": ("Ruby", "rb"),
+    "php": ("PHP", "php"),
+    "c": ("C", "c"),
 }
 
 def generate_code(language: str, text: str) -> str:
@@ -28,12 +36,35 @@ def generate_code(language: str, text: str) -> str:
         "C++": f'#include <iostream>\n\nint main() {{\n    std::cout << "{escaped_text}";\n    return 0;\n}}',
         "JavaScript": f'console.log("{escaped_text}");',
         "C#": f'using System;\n\nclass Program {{\n    static void Main(string[] args) {{\n        Console.WriteLine("{escaped_text}");\n    }}\n}}',
-        "HTML": f'<!DOCTYPE html>\n<html>\n<head><title>Message</title></head>\n<body>\n    <p>{html.escape(text)}</p>\n</body>\n</html>'
+        "HTML": f'<!DOCTYPE html>\n<html>\n<head><title>Message</title></head>\n<body>\n    <p>{html.escape(text)}</p>\n</body>\n</html>',
+        "Kotlin": f'fun main() {{\n    println("{escaped_text}")\n}}',
+        "Assembly": (
+            'section .data\n'
+            f'    msg db "{escaped_text}", 0\n\n'
+            'section .text\n'
+            '    global _start\n\n'
+            '_start:\n'
+            '    ; This is a simplified representation for Linux x86-64 NASM syntax.\n'
+            '    ; It does not calculate string length dynamically.\n'
+            '    mov rax, 1 ; syscall for write\n'
+            '    mov rdi, 1 ; file descriptor (stdout)\n'
+            '    mov rsi, msg ; message to write\n'
+            '    mov rdx, 14 ; placeholder length\n'
+            '    syscall\n\n'
+            '    mov rax, 60 ; syscall for exit\n'
+            '    xor rdi, rdi ; exit code 0\n'
+            '    syscall'
+        ),
+        "Go": f'package main\n\nimport "fmt"\n\nfunc main() {{\n    fmt.Println("{escaped_text}")\n}}',
+        "Rust": f'fn main() {{\n    println!("{escaped_text}");\n}}',
+        "Swift": f'print("{escaped_text}")',
+        "Ruby": f'puts "{escaped_text}"',
+        "PHP": f'<?php\n\necho "{escaped_text}";\n',
+        "C": f'#include <stdio.h>\n\nint main() {{\n    printf("{escaped_text}");\n    return 0;\n}}',
     }
     return code_templates.get(language, f"// Language '{language}' not supported.")
 
 def sync_save_code_to_file(code_string: str, file_ext: str) -> str:
-    """Saves the code string to a unique temporary file and returns the path."""
     unique_id = str(uuid.uuid4())
     output_path = os.path.join(TEMP_DIR, f"main_{unique_id}.{file_ext}")
     with open(output_path, "w", encoding="utf-8") as f:
@@ -41,7 +72,6 @@ def sync_save_code_to_file(code_string: str, file_ext: str) -> str:
     return output_path
 
 def safe_escape(text: str) -> str:
-    """Escapes HTML characters for safe sending."""
     return html.escape(str(text))
 
 @bot.add_cmd(cmd="codeit")
@@ -50,8 +80,9 @@ async def codeit_handler(bot: BOT, message: Message):
     CMD: CODEIT
     INFO: Turns a text message into a program file with a code preview.
     USAGE:
-        .codeit [lang] (text)
-        .codeit [lang] (in reply to a message)
+        .codeit <lang> <text>
+        .code.it <lang> (in reply to a message)
+    LANGUAGES: python, java, c++, js, cs, html, kotlin, asm, go, rust, swift, ruby, php, c
     """
     replied_msg = message.replied
     
@@ -85,13 +116,13 @@ async def codeit_handler(bot: BOT, message: Message):
         temp_files.append(output_path)
         
         preview_code = safe_escape(code_output)
-        caption = f'<pre class="language-{lang_name.lower()}">{preview_code}</pre>'
+        caption = f'<pre class="language-{lang_alias}">{preview_code}</pre>'
         
         if len(caption) > 1024:
-            overhead_len = len(f'<pre class="language-{lang_name.lower()}"></pre>\n... (truncated)')
+            overhead_len = len(f'<pre class="language-{lang_alias}"></pre>\n... (truncated)')
             max_code_len = 1024 - overhead_len
             truncated_code = safe_escape(code_output[:max_code_len])
-            caption = f'<pre class="language-{lang_name.lower()}">{truncated_code}\n... (truncated)</pre>'
+            caption = f'<pre class="language-{lang_alias}">{truncated_code}\n... (truncated)</pre>'
         
         reply_target = replied_msg or message
         await bot.send_document(
