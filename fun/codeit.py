@@ -80,8 +80,8 @@ async def codeit_handler(bot: BOT, message: Message):
     CMD: CODEIT
     INFO: Turns a text message into a program file with a code preview.
     USAGE:
-        .codeit <lang> <text>
-        .code.it <lang> (in reply to a message)
+        .codeit [lang] (text)
+        .codeit [lang] (in reply to a message)
     LANGUAGES: python, java, c++, js, cs, html, kotlin, asm, go, rust, swift, ruby, php, c
     """
     replied_msg = message.replied
