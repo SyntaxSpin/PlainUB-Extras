@@ -87,13 +87,13 @@ async def codeit_handler(bot: BOT, message: Message):
     replied_msg = message.replied
     
     if not message.input:
-        return await message.edit("<b>Usage:</b> .codeit <language> [text]", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("<b>Usage:</b> .codeit <language> [text]", del_in=ERROR_VISIBLE_DURATION)
 
     parts = message.input.split(maxsplit=1)
     lang_alias = parts[0].lower()
     
     if lang_alias not in LANGUAGES:
-        return await message.edit(f"Unsupported language: <code>{lang_alias}</code>.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply(f"Unsupported language: <code>{lang_alias}</code>.", del_in=ERROR_VISIBLE_DURATION)
 
     lang_name, file_ext = LANGUAGES[lang_alias]
     
@@ -103,7 +103,7 @@ async def codeit_handler(bot: BOT, message: Message):
     elif replied_msg and replied_msg.text:
         text_to_code = replied_msg.text
     else:
-        return await message.edit("Please provide text or reply to a text message.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Please provide text or reply to a text message.", del_in=ERROR_VISIBLE_DURATION)
 
     progress_message = await message.reply("<code>Generating code...</code>")
     
