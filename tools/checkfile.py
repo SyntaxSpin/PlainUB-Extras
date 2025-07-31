@@ -52,7 +52,7 @@ def get_exif_data(file_path: str) -> dict:
 async def checkfile_handler(bot: BOT, message: Message):
     replied_msg = message.replied
     if not replied_msg or not replied_msg.media:
-        await message.edit("Please reply to any media file to check it.", del_in=ERROR_VISIBLE_DURATION)
+        await message.reply("Please reply to any media file to check it.", del_in=ERROR_VISIBLE_DURATION)
         return
 
     progress_message = await message.reply("<code>Downloading for deep analysis...</code>")
