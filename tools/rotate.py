@@ -67,7 +67,7 @@ async def rotate_handler(bot: BOT, message: Message):
         (replied_msg.document and replied_msg.document.mime_type.startswith(("image/", "video/")))
     )
     if not is_media:
-        return await message.edit("Please reply to an image, video, or GIF to rotate it.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Please reply to an image, video, or GIF to rotate it.", del_in=ERROR_VISIBLE_DURATION)
 
     try:
         rotations = 1
@@ -76,7 +76,7 @@ async def rotate_handler(bot: BOT, message: Message):
         if not (1 <= rotations <= 3):
             raise ValueError("Number of rotations must be 1, 2, or 3.")
     except ValueError:
-        return await message.edit("Invalid input. Please provide a number between 1 and 3.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Invalid input. Please provide a number between 1 and 3.", del_in=ERROR_VISIBLE_DURATION)
 
     progress_message = await message.reply("<code>Downloading media...</code>")
     
