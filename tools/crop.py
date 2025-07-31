@@ -54,16 +54,16 @@ async def crop_handler(bot: BOT, message: Message):
     is_animation = replied_msg and (replied_msg.animation or (replied_msg.document and replied_msg.document.mime_type == 'image/gif'))
     
     if is_animation:
-        return await message.edit("GIFs are not supported by this tool.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("GIFs are not supported by this tool.", del_in=ERROR_VISIBLE_DURATION)
     if not is_media:
-        return await message.edit("Please reply to an image or video to crop it.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Please reply to an image or video to crop it.", del_in=ERROR_VISIBLE_DURATION)
         
     if not message.input:
-        return await message.edit("<b>Usage:</b> .crop [width]x[height]", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("<b>Usage:</b> .crop [width]x[height]", del_in=ERROR_VISIBLE_DURATION)
     
     match = re.match(r"(\d+)[x:](\d+)", message.input)
     if not match:
-        return await message.edit("Invalid format. Use `.crop [width]x[height]`.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Invalid format. Use `.crop [width]x[height]`.", del_in=ERROR_VISIBLE_DURATION)
 
     progress_message = await message.reply("<code>Downloading media...</code>")
     
