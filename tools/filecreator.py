@@ -37,7 +37,7 @@ async def filecreator_handler(bot: BOT, message: Message):
     replied_msg = message.replied
     
     if not message.input:
-        return await message.edit(
+        return await message.reply(
             "<b>Usage:</b> .filecreate [filename.ext] (content)",
             del_in=ERROR_VISIBLE_DURATION
         )
@@ -54,7 +54,7 @@ async def filecreator_handler(bot: BOT, message: Message):
         content_to_write = replied_msg.text
         reply_target = replied_msg
     else:
-        return await message.edit("Please provide content directly or by replying to a text message.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Please provide content directly or by replying to a text message.", del_in=ERROR_VISIBLE_DURATION)
 
     progress_message = await message.reply("<code>Creating file...</code>")
     
