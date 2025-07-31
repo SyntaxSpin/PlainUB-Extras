@@ -42,11 +42,11 @@ async def tts_handler(bot: BOT, message: Message):
         else:
             text_to_speak = message.input
     else:
-        await message.edit("Please provide text or reply to a message.", del_in=ERROR_VISIBLE_DURATION)
+        await message.reply("Please provide text or reply to a message.", del_in=ERROR_VISIBLE_DURATION)
         return
 
     if not text_to_speak.strip():
-        await message.edit("The message contains no text to convert.", del_in=ERROR_VISIBLE_DURATION)
+        await message.reply("The message contains no text to convert.", del_in=ERROR_VISIBLE_DURATION)
         return
 
     progress_message = await message.reply("<code>Converting text to speech...</code>")
