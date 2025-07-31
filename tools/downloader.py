@@ -163,7 +163,7 @@ async def downloader_task(message: Message, progress_message: Message, job_id: i
         shutil.rmtree(TEMP_DIR, ignore_errors=True); os.makedirs(TEMP_DIR, exist_ok=True)
 
 # --- Main Handlers ---
-@bot.add_cmd(cmd=["download", "dl"])
+@bot.add_cmd(cmd=["downloader", "dl"])
 async def downloader_handler(bot: BOT, message: Message):
     if not message.input and not (message.replied and message.replied.media):
         return await message.edit("Please provide a link or reply to a file to download.", del_in=ERROR_VISIBLE_DURATION)
