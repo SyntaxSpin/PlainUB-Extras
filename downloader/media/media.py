@@ -30,7 +30,7 @@ async def progress_display(current: int, total: int, msg: Message, start: float,
             f"<code>[{bar}] {percentage:.1f}%</code>\n"
             f"<b>Progress:</b> <code>{format_bytes(current)} / {format_bytes(total)}</code>\n"
             f"<b>Speed:</b> <code>{format_bytes(speed)}/s</code> | <b>ETA:</b> <code>{format_eta(eta)}</code>\n"
-            f"<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancelmedia {job_id} to stop)</i>")
+            f"<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancelmd {job_id} to stop)</i>")
     try: await msg.edit_text(text)
     except: pass
 async def run_command_with_progress(command: str, msg: Message, filename: str, job_id: int):
