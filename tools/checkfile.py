@@ -66,7 +66,6 @@ async def checkfile_handler(bot: BOT, message: Message):
         
         await progress_message.edit("<code>Analyzing...</code>")
         
-        # --- Building the Ultimate Report ---
         info_lines = ["<b>File Information:</b>"]
         file_name = getattr(media_object, 'file_name', os.path.basename(original_path) if original_path else 'N/A')
         info_lines.append(f"<b>  - Name:</b> <code>{html.escape(str(file_name))}</code>")
@@ -78,17 +77,17 @@ async def checkfile_handler(bot: BOT, message: Message):
         if probe_data:
             info_lines.append("\n<b>Technical Details:</b>")
             
-            format_section = probe_data.get("format", {})
+            format_section = probe_data.get("format") or {}
             format_tags = format_section.get("tags") or {}
-            if format_tags or "duration" in format_section:
+            
+            if format_tags or format_section.get("duration"):
                 info_lines.append("<b>  Format / Container:</b>")
-                if "duration" in format_section:
+                if format_section.get("duration"):
                     duration = float(format_section["duration"])
                     minutes, seconds = divmod(int(duration), 60)
                     info_lines.append(f"    - Duration: <code>{minutes:02d}:{seconds:02d}</code>")
-                if "creation_time" in format_tags: info_lines.append(f"    - Creation Time: <code>{format_tags['creation_time']}</code>")
-                if "encoder" in format_tags: info_lines.append(f"    - Encoder/Software: <code>{html.escape(format_tags['encoder'])}</code>")
-                if "title" in format_tags: info_lines.append(f"    - Title: <code>{html.escape(format_tags['title'])}</code>")
+                if format_tags.get("creation_time"): info_lines.append(f"    - Creation Time: <code>{format_tags['creation_time']}</code>")
+                if format_tags.get("encoder"): info_lines.append(f"    - Encoder/Software: <code>{html.escape(format_tags['encoder'])}</code>")
 
             streams = probe_data.get("streams") or []
             video_stream = next((s for s in streams if s.get("codec_type") == "video"), None)
@@ -96,27 +95,25 @@ async def checkfile_handler(bot: BOT, message: Message):
 
             if video_stream:
                 info_lines.append("<b>  Media Stream:</b>")
-                info_lines.append(f"    - Resolution: <code>{video_stream.get('width')}x{video_stream.get('height')}</code>")
-                info_lines.append(f"    - Codec: <code>{video_stream.get('codec_long_name', 'N/A')}</code> (<code>{video_stream.get('codec_name', 'N/A')}</code>)")
-                info_lines.append(f"    - Profile: <code>{video_stream.get('profile', 'N/A')}</code>")
-                info_lines.append(f"    - Pixel Format: <code>{video_stream.get('pix_fmt', 'N/A')}</code>")
-                if "avg_frame_rate" in video_stream and video_stream["avg_frame_rate"] != "0/0":
-                    num, den = map(int, video_stream["avg_frame_rate"].split('/')); fps = round(num / den, 2) if den != 0 else 0
-                    info_lines.append(f"    - Framerate: <code>{fps} FPS</code>")
-                bit_rate = int(video_stream.get('bit_rate', 0))
-                if bit_rate > 0: info_lines.append(f"    - Bitrate: <code>{round(bit_rate / 1000)} kb/s</code>")
+                if video_stream.get("width") and video_stream.get("height"): info_lines.append(f"    - Resolution: <code>{video_stream.get('width')}x{video_stream.get('height')}</code>")
+                if video_stream.get("codec_long_name"): info_lines.append(f"    - Codec: <code>{video_stream.get('codec_long_name')}</code> (<code>{video_stream.get('codec_name')}</code>)")
+                if video_stream.get("avg_frame_rate", "0/0") != "0/0":
+                    try:
+                        num, den = map(int, video_stream["avg_frame_rate"].split('/')); fps = round(num / den, 2) if den != 0 else 0
+                        info_lines.append(f"    - Framerate: <code>{fps} FPS</code>")
+                    except: pass
+                if video_stream.get("bit_rate"): info_lines.append(f"    - Bitrate: <code>{round(int(video_stream.get('bit_rate')) / 1000)} kb/s</code>")
 
             if audio_stream:
                 info_lines.append("<b>  Audio Stream:</b>")
-                info_lines.append(f"    - Codec: <code>{audio_stream.get('codec_long_name', 'N/A')}</code> (<code>{audio_stream.get('codec_name', 'N/A')}</code>)")
-                info_lines.append(f"    - Sample Rate: <code>{audio_stream.get('sample_rate')} Hz</code>")
-                info_lines.append(f"    - Channels: <code>{audio_stream.get('channels')}</code> ({audio_stream.get('channel_layout', 'N/A')})")
-                bit_rate = int(audio_stream.get('bit_rate', 0))
-                if bit_rate > 0: info_lines.append(f"    - Bitrate: <code>{round(bit_rate / 1000)} kb/s</code>")
+                if audio_stream.get("codec_long_name"): info_lines.append(f"    - Codec: <code>{audio_stream.get('codec_long_name')}</code> (<code>{audio_stream.get('codec_name')}</code>)")
+                if audio_stream.get("sample_rate"): info_lines.append(f"    - Sample Rate: <code>{audio_stream.get('sample_rate')} Hz</code>")
+                if audio_stream.get("channels"): info_lines.append(f"    - Channels: <code>{audio_stream.get('channels')}</code> ({audio_stream.get('channel_layout', 'N/A')})")
+                if audio_stream.get("bit_rate"): info_lines.append(f"    - Bitrate: <code>{round(int(audio_stream.get('bit_rate')) / 1000)} kb/s</code>")
         
         exif_data = get_exif_data(original_path)
         if exif_data:
-            info_lines.append("\n<b>EXIF Data:</b>")
+            info_lines.append("\n<b>EXIF Data (from Image):</b>")
             for tag, value in exif_data.items():
                 if len(str(value)) < 70 and str(value).strip():
                     info_lines.append(f"<b>  - {tag}:</b> <code>{html.escape(value)}</code>")
@@ -124,6 +121,7 @@ async def checkfile_handler(bot: BOT, message: Message):
         final_report = "\n".join(info_lines)
         
         await bot.send_message(message.chat.id, final_report, reply_to_message_id=replied_msg.id)
+        
         await progress_message.delete(); await message.delete()
     except Exception as e:
         await progress_message.edit(f"<b>Error:</b> Could not check file.\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
