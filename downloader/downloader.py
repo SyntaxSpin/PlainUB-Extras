@@ -85,7 +85,7 @@ async def downloader_task(link: str, progress_message: Message, job_id: int):
                             await progress_display(downloaded, total_size, progress_message, start_time, "Downloading", filename, job_id)
                             last_update = time.time()
         else: raise ValueError("Unsupported link type for .dl (use .media for platform videos)")
-        await progress_message.edit(f"<b>Download complete!</b> File saved to downloads folder.", del_in=10)
+        await progress_message.edit(f"✅ <b>Download complete!</b> File saved to downloads folder.", del_in=10)
     except asyncio.CancelledError:
         await progress_message.edit(f"<b>Job <code>{job_id}</code> cancelled.</b>", del_in=ERROR_VISIBLE_DURATION)
         if file_path and os.path.exists(file_path):
@@ -121,70 +121,4 @@ async def cancel_handler(bot: BOT, message: Message):
             ACTIVE_JOBS[job_id]["task"].cancel()
             await message.delete()
         else: await message.edit(f"Job <code>{job_id}</code> not found.", del_in=ERROR_VISIBLE_DURATION)
-    except (ValueError, KeyError): await message.edit("Invalid Job ID.", del_in=ERROR_VISIBLE_DURATION)async def _download_torrent(link: str, msg: Message, job_id: int):
-    command = f'aria2c --summary-interval=1 --seed-time=0 -d "{TEMP_DIR}" "{link}"'
-    await run_command_with_progress(command, msg, "Torrent Download", job_id)
-    files = [f for f in os.listdir(TEMP_DIR) if not f.endswith((".aria2", ".torrent"))]
-    if len(files) == 1: return os.path.join(TEMP_DIR, files[0])
-    elif len(files) > 1:
-        await msg.edit("<code>Zipping torrent files...</code>")
-        zip_out = os.path.join(TEMP_DIR, "torrent_download"); shutil.make_archive(zip_out, 'zip', TEMP_DIR)
-        return zip_out + ".zip"
-    raise FileNotFoundError("Could not find any downloaded files from the torrent.")
-
-# --- Link Detection ---
-def is_magnet_link(url: str): return url.startswith("magnet:?")
-def is_http_link(url: str): return url.startswith(("http://", "https://"))
-
-# --- Main Task ---
-async def downloader_task(link: str, progress_message: Message, job_id: int, original_message: Message):
-    try:
-        if is_magnet_link(link): downloaded_path = await _download_torrent(link, progress_message, job_id)
-        elif is_http_link(link): downloaded_path = await _download_http(link, progress_message, job_id)
-        else: raise ValueError("Unsupported link type. Only HTTP and Magnet links are supported by this command.")
-        
-        filename = os.path.basename(downloaded_path)
-        start_time = time.time(); last_update = 0
-        async def upload_progress(current, total):
-            nonlocal last_update
-            if time.time() - last_update > 5:
-                await progress_display(current, total, progress_message, start_time, "Uploading", filename, job_id)
-                last_update = time.time()
-        
-        reply_params = ReplyParameters(message_id=original_message.id)
-        await bot.send_document(chat_id=original_message.chat_id, document=downloaded_path, caption=f"Downloaded: <code>{filename}</code>", reply_parameters=reply_params, progress=upload_progress)
-        await progress_message.delete(); await original_message.delete()
-    except asyncio.CancelledError:
-        await progress_message.edit(f"<b>Job <code>{job_id}</code> cancelled.</b>", del_in=ERROR_VISIBLE_DURATION)
-    except Exception as e:
-        await progress_message.edit(f"<b>Error in job <code>{job_id}</code>:</b>\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
-    finally:
-        shutil.rmtree(TEMP_DIR, ignore_errors=True); os.makedirs(TEMP_DIR, exist_ok=True)
-
-# --- Main Handlers ---
-@bot.add_cmd(cmd=["download", "dl"])
-async def dl_handler(bot: BOT, message: Message):
-    if not message.input:
-        return await message.reply("Please provide a direct HTTP or Magnet link.", del_in=ERROR_VISIBLE_DURATION)
-    link = message.input.strip()
-    job_id = int(time.time())
-    progress_message = await message.reply(f"<code>Starting download job {job_id}...</code>")
-    task = asyncio.create_task(downloader_task(link, progress_message, job_id, message))
-    ACTIVE_DL_JOBS[job_id] = {"task": task, "process": None}
-    try: await task
-    finally:
-        if job_id in ACTIVE_DL_JOBS: del ACTIVE_DL_JOBS[job_id]
-
-@bot.add_cmd(cmd=["canceldl"])
-async def cancel_dl_handler(bot: BOT, message: Message):
-    if not message.input: return await message.reply("Please provide a Job ID to cancel.", del_in=ERROR_VISIBLE_DURATION)
-    try:
-        job_id = int(message.input.strip())
-        if job_id in ACTIVE_DL_JOBS:
-            if ACTIVE_DL_JOBS[job_id].get("process"):
-                try: ACTIVE_DL_JOBS[job_id]["process"].kill()
-                except: pass
-            ACTIVE_DL_JOBS[job_id]["task"].cancel()
-            await message.delete()
-        else: await message.reply(f"Job <code>{job_id}</code> not found or already completed.", del_in=ERROR_VISIBLE_DURATION)
-    except (ValueError, KeyError): await message.reply("Invalid Job ID.", del_in=ERROR_VISIBLE_DURATION)
+    except (ValueError, KeyError): await message.edit("Invalid Job ID.", del_in=ERROR_VISIBLE_DURATION)
