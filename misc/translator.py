@@ -49,13 +49,13 @@ async def translate_handler(bot: BOT, message: Message):
         else:
             text_to_translate = message.input
     else:
-        await message.edit("Please provide text to translate or reply to a message.")
+        await message.reply("Please provide text to translate or reply to a message.")
         await asyncio.sleep(ERROR_VISIBLE_DURATION)
         await message.delete()
         return
 
     if not text_to_translate.strip():
-        await message.edit("The message contains no text to translate.")
+        await message.reply("The message contains no text to translate.")
         await asyncio.sleep(ERROR_VISIBLE_DURATION)
         await message.delete()
         return
