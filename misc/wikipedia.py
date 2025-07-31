@@ -35,7 +35,7 @@ async def wiki_handler(bot: BOT, message: Message):
     
     query = message.input
     if not query:
-        await message.edit("Please provide a search query. Usage: `.wiki Python (programming language)`")
+        await message.reply("Please provide a search query. Usage: `.wiki Python (programming language)`")
         await asyncio.sleep(ERROR_VISIBLE_DURATION)
         await message.delete()
         return
