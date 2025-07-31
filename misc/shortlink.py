@@ -31,7 +31,7 @@ async def shortlink_handler(bot: BOT, message: Message):
         url_to_shorten = message.replied.text or message.replied.caption
     
     if not url_to_shorten:
-        await message.edit("Please provide a URL.")
+        await message.reply("Please provide a URL.")
         await asyncio.sleep(ERROR_VISIBLE_DURATION)
         await message.delete()
         return
