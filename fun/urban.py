@@ -34,7 +34,7 @@ async def urban_dictionary_handler(bot: BOT, message: Message):
     
     term_to_search = message.input
     if not term_to_search:
-        await message.edit("What term should I look up? Usage: `.ud yeet`")
+        await message.reply("What term should I look up? Usage: `.ud yeet`")
         await asyncio.sleep(ERROR_VISIBLE_DURATION)
         await message.delete()
         return
