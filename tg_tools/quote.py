@@ -31,7 +31,7 @@ async def quote_sticker_handler(bot: BOT, message: Message):
     INFO: Creates a sticker/image by forwarding messages to @QuotLyBot.
     """
     if not message.replied:
-        await message.edit("Please reply to a message to quote.", del_in=ERROR_VISIBLE_DURATION)
+        await message.reply("Please reply to a message to quote.", del_in=ERROR_VISIBLE_DURATION)
         return
 
     count = 1
