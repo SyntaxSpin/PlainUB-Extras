@@ -19,7 +19,7 @@ async def google_search_handler(bot: BOT, message: Message):
     """
     query = message.input
     if not query:
-        await message.edit("Please provide a search query.")
+        await message.reply("Please provide a search query.")
         await asyncio.sleep(ERROR_VISIBLE_DURATION)
         await message.delete()
         return
