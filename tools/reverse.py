@@ -56,7 +56,7 @@ async def reverse_handler(bot: BOT, message: Message):
         (replied_msg.document and replied_msg.document.mime_type.startswith(("video/", "audio/", "image/gif")))
     )
     if not is_media:
-        return await message.edit("Please reply to a video, GIF, or audio file.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Please reply to a video, GIF, or audio file.", del_in=ERROR_VISIBLE_DURATION)
 
     progress_message = await message.reply("<code>Downloading media...</code>")
     
