@@ -52,52 +52,68 @@ async def run_command(command: str):
     stdout, stderr = await process.communicate()
     return (stdout.decode('utf-8', 'replace').strip(), stderr.decode('utf-8', 'replace').strip(), process.returncode)
 
-# --- Media Download Task ---
+# --- Media Download Task (FIXED) ---
 async def media_downloader_task(link: str, progress_message: Message, job_id: int, original_message: Message):
     try:
+        # Get title for display purposes only
         title_cmd = f'yt-dlp --get-title "{link}"'
         title, _, _ = await run_command(title_cmd)
-        filename = f"{title or 'media'}"
-        
-        # yt-dlp will automatically choose the best format extension
-        output_template = f"{TEMP_DIR}{filename}.%(ext)s"
-        
+        display_filename = f"{title or 'media'}"
+
+        # Use the unique and safe job_id as the base filename for downloading
+        base_filename = str(job_id)
+        output_template = f"{TEMP_DIR}{base_filename}.%(ext)s"
+
         command = f'yt-dlp --progress --extractor-args "generic:impersonate=chrome110" -f "bv*+ba/b" --merge-output-format mp4 -o "{output_template}" "{link}"'
-        await run_command_with_progress(command, progress_message, filename + ".mp4", job_id)
         
+        # Pass the user-friendly display_filename to the progress function
+        await run_command_with_progress(command, progress_message, display_filename + ".mp4", job_id)
+
+        # Reliably find the downloaded file by its base_filename (job_id)
         downloaded_path = None
         for file in os.listdir(TEMP_DIR):
-            if filename in file:
+            if file.startswith(base_filename):
                 downloaded_path = os.path.join(TEMP_DIR, file)
                 break
-        
+
         if not downloaded_path:
             raise FileNotFoundError("yt-dlp finished but the output file was not found.")
 
-        filename = os.path.basename(downloaded_path)
-        is_image = downloaded_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
+        # Use the display filename for the caption, but the actual path for uploading
+        caption_text = f"Downloaded: <code>{html.escape(display_filename)}</code>"
+        actual_filename = os.path.basename(downloaded_path)
+        is_image = actual_filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
 
         start_time = time.time(); last_update = 0
         async def upload_progress(current, total):
             nonlocal last_update
             if time.time() - last_update > 5:
-                await progress_display(current, total, progress_message, start_time, "Uploading", filename, job_id)
+                await progress_display(current, total, progress_message, start_time, "Uploading", actual_filename, job_id)
                 last_update = time.time()
 
         reply_params = ReplyParameters(message_id=original_message.id)
-        
+
         if is_image:
-            await bot.send_photo(chat_id=original_message.chat_id, photo=downloaded_path, caption=f"Downloaded: <code>{filename}</code>", reply_parameters=reply_params, progress=upload_progress)
+            await bot.send_photo(chat_id=original_message.chat_id, photo=downloaded_path, caption=caption_text, reply_parameters=reply_params, progress=upload_progress)
         else: # Video
-            await bot.send_video(chat_id=original_message.chat_id, video=downloaded_path, caption=f"Downloaded: <code>{filename}</code>", reply_parameters=reply_params, progress=upload_progress)
-        
-        await progress_message.delete(); await original_message.delete()
+            await bot.send_video(chat_id=original_message.chat_id, video=downloaded_path, caption=caption_text, reply_parameters=reply_params, progress=upload_progress)
+
+        await progress_message.delete()
+        try:
+            await original_message.delete()
+        except:
+            pass
+            
     except asyncio.CancelledError:
         await progress_message.edit(f"<b>Job <code>{job_id}</code> cancelled.</b>", del_in=ERROR_VISIBLE_DURATION)
     except Exception as e:
         await progress_message.edit(f"<b>Error in job <code>{job_id}</code>:</b>\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
     finally:
-        shutil.rmtree(TEMP_DIR, ignore_errors=True); os.makedirs(TEMP_DIR, exist_ok=True)
+        # Proper cleanup of the temp directory
+        if os.path.exists(TEMP_DIR):
+            shutil.rmtree(TEMP_DIR, ignore_errors=True)
+        os.makedirs(TEMP_DIR, exist_ok=True)
+
 
 # --- Main Handlers ---
 @bot.add_cmd(cmd=["media", "md"])
