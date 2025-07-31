@@ -30,7 +30,9 @@ def format_eta(seconds: int) -> str:
     return f"{minutes:02d}:{seconds:02d}"
 
 async def progress_display(current: int, total: int, msg: Message, start: float, status: str, filename: str, job_id: int):
-    elapsed = time.time() - start; if elapsed == 0: return
+    elapsed = time.time() - start
+    if elapsed == 0:
+        return
     speed = current / elapsed; percentage = current * 100 / total
     eta = (total - current) / speed if speed > 0 else 0
     bar = '█' * int(10 * current // total) + '░' * (10 - int(10 * current // total))
