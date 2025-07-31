@@ -20,27 +20,70 @@ def format_bytes(size_bytes: int) -> str:
 def format_eta(seconds: int) -> str:
     if seconds is None or seconds < 0: return "N/A"; minutes, seconds = divmod(int(seconds), 60); hours, minutes = divmod(minutes, 60)
     if hours > 0: return f"{hours:02d}:{minutes:02d}:{seconds:02d}"; return f"{minutes:02d}:{seconds:02d}"
+
 async def progress_display(current: int, total: int, msg: Message, start: float, status: str, filename: str, job_id: int):
-    elapsed = time.time() - start;
+    elapsed = time.time() - start
     if elapsed == 0: return
-    speed = current / elapsed; percentage = current * 100 / total; eta = (total - current) / speed if speed > 0 else 0
-    bar = '█' * int(10 * current // total) + '░' * (10 - int(10 * current // total))
-    text = (f"<b>{status}:</b> <code>{html.escape(filename)}</code>\n\n"
-            f"<code>[{bar}] {percentage:.1f}%</code>\n"
-            f"<b>Progress:</b> <code>{format_bytes(current)} / {format_bytes(total)}</code>\n"
-            f"<b>Speed:</b> <code>{format_bytes(speed)}/s</code> | <b>ETA:</b> <code>{format_eta(eta)}</code>\n"
-            f"<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancelmd {job_id} to stop)</i>")
-    try: await msg.edit_text(text)
-    except: pass
+    
+    if total == 100 and status == "Downloading":
+        percentage = current
+        bar = '█' * int(percentage // 10) + '░' * (10 - int(percentage // 10))
+        text = (f"<b>{status}:</b> <code>{html.escape(filename)}</code>\n\n"
+                f"<code>[{bar}] {percentage:.1f}%</code>\n"
+                f"<i>(Size/Speed info unavailable for this download)</i>\n"
+                f"<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancelmd {job_id} to stop)</i>")
+    else:
+        speed = current / elapsed
+        percentage = current * 100 / total if total > 0 else 0
+        eta = (total - current) / speed if speed > 0 else 0
+        bar = '█' * int(10 * percentage // 100) + '░' * (10 - int(10 * percentage // 100))
+        text = (f"<b>{status}:</b> <code>{html.escape(filename)}</code>\n\n"
+                f"<code>[{bar}] {percentage:.1f}%</code>\n"
+                f"<b>Progress:</b> <code>{format_bytes(current)} / {format_bytes(total)}</code>\n"
+                f"<b>Speed:</b> <code>{format_bytes(speed)}/s</code> | <b>ETA:</b> <code>{format_eta(eta)}</code>\n"
+                f"<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancelmd {job_id} to stop)</i>")
+    try:
+        await msg.edit_text(text)
+    except:
+        pass
+
 async def run_command_with_progress(command: str, msg: Message, filename: str, job_id: int):
-    process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+    process = await asyncio.create_subprocess_shell(
+        command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+    )
     ACTIVE_MEDIA_JOBS[job_id]["process"] = process
-    await msg.edit(f"<b>Downloading:</b> <code>{html.escape(filename)}</code>\n\n<i>Please wait, processing...</i>\n<b>Job ID:</b> <code>{job_id}</code>")
-    output = await process.stdout.read()
+    
+    progress_regex = re.compile(r"\[download\]\s+([0-9.]+?)%")
+    last_update = 0
+    start_time = time.time()
+    output_lines = []
+
+    while True:
+        await asyncio.sleep(0)
+        
+        try:
+            line = await asyncio.wait_for(process.stdout.readline(), timeout=1.0)
+        except asyncio.TimeoutError:
+            if process.returncode is not None:
+                break
+            else:
+                continue
+
+        if not line:
+            break
+        
+        line_text = line.decode('utf-8', 'replace').strip()
+        output_lines.append(line_text)
+        
+        match = progress_regex.search(line_text)
+        if match and time.time() - last_update > 2:
+            percentage = float(match.group(1))
+            await progress_display(int(percentage), 100, msg, start_time, "Downloading", filename, job_id)
+            last_update = time.time()
+
     await process.wait()
-    output_text = output.decode('utf-8', 'replace').strip()
     if process.returncode != 0:
-        raise RuntimeError(f"Process failed:\n{output_text}")
+        raise RuntimeError(f"Process failed:\n{'\n'.join(output_lines)}")
 
 async def run_command(command: str):
     process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
@@ -56,9 +99,9 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
         base_filename = str(job_id)
         output_template = f"{TEMP_DIR}{base_filename}.%(ext)s"
 
-        command = f'yt-dlp --extractor-args "generic:impersonate=chrome110" -f "bv*+ba/b" --merge-output-format mp4 -o "{output_template}" "{link}"'
+        command = f'yt-dlp --progress --newline --extractor-args "generic:impersonate=chrome110" -f "bv*+ba/b" --merge-output-format mp4 -o "{output_template}" "{link}"'
         
-        await run_command_with_progress(command, progress_message, display_filename + ".mp4", job_id)
+        await run_command_with_progress(command, progress_message, display_filename, job_id)
 
         downloaded_path = None
         for file in os.listdir(TEMP_DIR):
@@ -124,8 +167,10 @@ async def cancel_media_handler(bot: BOT, message: Message):
         job_id = int(message.input.strip())
         if job_id in ACTIVE_MEDIA_JOBS:
             if ACTIVE_MEDIA_JOBS[job_id].get("process"):
-                try: ACTIVE_MEDIA_JOBS[job_id]["process"].kill()
-                except: pass
+                try:
+                    ACTIVE_MEDIA_JOBS[job_id]["process"].kill()
+                except ProcessLookupError:
+                    pass
             ACTIVE_MEDIA_JOBS[job_id]["task"].cancel()
             await message.delete()
         else: await message.reply(f"Job <code>{job_id}</code> not found or already completed.", del_in=ERROR_VISIBLE_DURATION)
