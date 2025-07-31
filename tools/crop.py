@@ -69,7 +69,7 @@ async def crop_handler(bot: BOT, message: Message):
     CMD: CROP
     INFO: Crops the replied image, video, or GIF from the center.
     USAGE:
-        .crop <width>x<height> (e.g., .crop 1280x720)
+        .crop [width]x[height] (e.g., .crop 1280x720)
     """
     replied_msg = message.replied
     is_media = replied_msg and (
@@ -80,11 +80,11 @@ async def crop_handler(bot: BOT, message: Message):
         return await message.edit("Please reply to an image, video, or GIF to crop it.", del_in=ERROR_VISIBLE_DURATION)
         
     if not message.input:
-        return await message.edit("<b>Usage:</b> .crop <width>x<height>", del_in=ERROR_VISIBLE_DURATION)
+        return await message.edit("<b>Usage:</b> .crop [width]x[height]", del_in=ERROR_VISIBLE_DURATION)
 
     match = re.match(r"(\d+)[x:](\d+)", message.input)
     if not match:
-        return await message.edit("Invalid format. Use `.crop <width>x<height>`.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.edit("Invalid format. Use `.crop [width]x[height]`.", del_in=ERROR_VISIBLE_DURATION)
 
     progress_message = await message.reply("<code>Downloading media...</code>")
     
