@@ -67,9 +67,17 @@ async def checkfile_handler(bot: BOT, message: Message):
         await progress_message.edit("<code>Analyzing...</code>")
         
         info_lines = ["<b>File Information:</b>"]
-        file_name = getattr(media_object, 'file_name', os.path.basename(original_path) if original_path else 'N/A')
+        
+        file_name = getattr(media_object, 'file_name', None)
+        if not file_name and original_path:
+            file_name = os.path.basename(original_path)
+        if not file_name:
+            file_name = 'N/A'
+        
+        extension = os.path.splitext(file_name)[1][1:].upper() if isinstance(file_name, str) and '.' in file_name else 'N/A'
+        
         info_lines.append(f"<b>  - Name:</b> <code>{html.escape(str(file_name))}</code>")
-        info_lines.append(f"<b>  - Extension:</b> <code>{os.path.splitext(file_name)[1][1:].upper() if '.' in file_name else 'N/A'}</code>")
+        info_lines.append(f"<b>  - Extension:</b> <code>{extension}</code>")
         info_lines.append(f"<b>  - MIME Type:</b> <code>{getattr(media_object, 'mime_type', 'N/A')}</code>")
         info_lines.append(f"<b>  - Size:</b> <code>{format_bytes(getattr(media_object, 'file_size', 0))}</code>")
         
@@ -77,9 +85,7 @@ async def checkfile_handler(bot: BOT, message: Message):
         if probe_data:
             info_lines.append("\n<b>Technical Details:</b>")
             
-            format_section = probe_data.get("format") or {}
-            format_tags = format_section.get("tags") or {}
-            
+            format_section = probe_data.get("format") or {}; format_tags = format_section.get("tags") or {}
             if format_tags or format_section.get("duration"):
                 info_lines.append("<b>  Format / Container:</b>")
                 if format_section.get("duration"):
