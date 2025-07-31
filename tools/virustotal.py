@@ -62,15 +62,15 @@ def format_vt_report(data: dict, scan_type: str, resource_id: str, original_inpu
 @bot.add_cmd(cmd=["virustotal", "vt"])
 async def virustotal_handler(bot: BOT, message: Message):
     if not VIRUSTOTAL_API_KEY or VIRUSTOTAL_API_KEY == "TUTAJ_WKLEJ_SWOJ_KLUCZ_API":
-        return await message.edit("<b>VirusTotal API Key not configured.</b>", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("<b>VirusTotal API Key not configured.</b>", del_in=ERROR_VISIBLE_DURATION)
     api_key = VIRUSTOTAL_API_KEY
     if message.replied and message.replied.media: await scan_file(api_key, message)
     elif message.input:
         if is_url(message.input): await scan_url(api_key, message)
         elif is_ip(message.input): await scan_domain_or_ip(api_key, message, "ip")
         elif is_domain(message.input): await scan_domain_or_ip(api_key, message, "domain")
-        else: await message.edit("Invalid input.", del_in=ERROR_VISIBLE_DURATION)
-    else: await message.edit("Reply to a file or provide a URL/domain/IP.", del_in=ERROR_VISIBLE_DURATION)
+        else: await message.reply("Invalid input.", del_in=ERROR_VISIBLE_DURATION)
+    else: await message.reply("Reply to a file or provide a URL/domain/IP.", del_in=ERROR_VISIBLE_DURATION)
 
 async def scan_file(api_key: str, message: Message):
     progress = await message.reply("<code>Downloading...</code>")
