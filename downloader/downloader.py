@@ -79,6 +79,7 @@ async def downloader_task(link: str, progress_message: Message, job_id: int):
         if is_magnet_link(link):
             command = f'aria2c --summary-interval=1 --seed-time=0 -d "{DOWNLOADS_DIR}" "{link}"'
             await run_command_with_progress(command, progress_message, "Torrent Download", job_id)
+            filename = "Torrent download"
         elif is_http_link(link):
             headers = {'User-Agent': 'Mozilla/5.0'}
             with requests.get(link, stream=True, headers=headers, timeout=20) as r:
@@ -102,9 +103,7 @@ async def downloader_task(link: str, progress_message: Message, job_id: int):
                 
                 with open(file_path, "wb") as f:
                     for chunk in r.iter_content(chunk_size=8192):
-
-                        await asyncio.sleep(0)
-                        
+                        await asyncio.sleep(0) # Allows cancellation
                         if chunk:
                             f.write(chunk)
                             downloaded += len(chunk)
@@ -118,17 +117,13 @@ async def downloader_task(link: str, progress_message: Message, job_id: int):
     except asyncio.CancelledError:
         await progress_message.edit(f"<b>Job <code>{job_id}</code> cancelled.</b>", del_in=ERROR_VISIBLE_DURATION)
         if file_path and os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except OSError:
-                pass
+            try: os.remove(file_path)
+            except OSError: pass
     except Exception as e:
         await progress_message.edit(f"<b>Error in job <code>{job_id}</code>:</b>\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
         if file_path and os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except OSError:
-                pass
+            try: os.remove(file_path)
+            except OSError: pass
 
 @bot.add_cmd(cmd=["downloader", "dl"])
 async def downloader_handler(bot: BOT, message: Message):
@@ -138,15 +133,11 @@ async def downloader_handler(bot: BOT, message: Message):
     progress = await message.reply(f"<code>Starting job {job_id}...</code>")
     task = asyncio.create_task(downloader_task(message.input, progress, job_id))
     ACTIVE_JOBS[job_id] = {"task": task, "process": None}
-    try:
-        await task
+    try: await task
     finally:
-        if job_id in ACTIVE_JOBS:
-            del ACTIVE_JOBS[job_id]
-        try:
-            await message.delete()
-        except:
-            pass
+        if job_id in ACTIVE_JOBS: del ACTIVE_JOBS[job_id]
+        try: await message.delete()
+        except: pass
 
 @bot.add_cmd(cmd="canceldl")
 async def cancel_handler(bot: BOT, message: Message):
@@ -155,11 +146,9 @@ async def cancel_handler(bot: BOT, message: Message):
         job_id = int(message.input.strip())
         if job_id in ACTIVE_JOBS:
             ACTIVE_JOBS[job_id]["task"].cancel()
-            
             if ACTIVE_JOBS[job_id].get("process"):
                 try: ACTIVE_JOBS[job_id]["process"].kill()
                 except ProcessLookupError: pass
-            
             await message.delete()
         else: await message.reply(f"Job <code>{job_id}</code> not found.", del_in=ERROR_VISIBLE_DURATION)
     except (ValueError, KeyError): await message.reply("Invalid Job ID.", del_in=ERROR_VISIBLE_DURATION)
