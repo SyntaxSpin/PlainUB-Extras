@@ -15,45 +15,56 @@ TEMP_DIR = "temp_downloader/"
 os.makedirs(TEMP_DIR, exist_ok=True)
 ERROR_VISIBLE_DURATION = 10
 
-# Global dictionary to keep track of active download/upload tasks
 ACTIVE_JOBS = {}
 
 def format_bytes(size_bytes: int) -> str:
-    if size_bytes == 0: return "0 B"; size_name = ("B", "KB", "MB", "GB", "TB")
-    i = int(math.floor(math.log(size_bytes, 1024))); p = math.pow(1024, i)
-    s = round(size_bytes / p, 2); return f"{s} {size_name[i]}"
+    if size_bytes == 0:
+        return "0 B"
+    size_name = ("B", "KB", "MB", "GB", "TB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return f"{s} {size_name[i]}"
 
 def format_eta(seconds: int) -> str:
-    if seconds is None or seconds < 0: return "N/A"
-    minutes, seconds = divmod(int(seconds), 60); hours, minutes = divmod(minutes, 60)
-    if hours > 0: return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    if seconds is None or seconds < 0:
+        return "N/A"
+    minutes, seconds = divmod(int(seconds), 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours > 0:
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
     return f"{minutes:02d}:{seconds:02d}"
 
 async def progress_display(current: int, total: int, msg: Message, start: float, status: str, filename: str, job_id: int):
-    elapsed = time.time() - start
-    if elapsed == 0:
+    elapsed_time = time.time() - start
+    if elapsed_time == 0:
         return
-    speed = current / elapsed; percentage = current * 100 / total
+    
+    speed = current / elapsed_time
+    percentage = current * 100 / total
     eta = (total - current) / speed if speed > 0 else 0
+    
     bar = '█' * int(10 * current // total) + '░' * (10 - int(10 * current // total))
     text = (f"<b>{status}:</b> <code>{html.escape(filename)}</code>\n\n"
             f"<code>[{bar}] {percentage:.1f}%</code>\n"
             f"<b>Progress:</b> <code>{format_bytes(current)} / {format_bytes(total)}</code>\n"
             f"<b>Speed:</b> <code>{format_bytes(speed)}/s</code> | <b>ETA:</b> <code>{format_eta(eta)}</code>\n"
             f"<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancel {job_id} to stop)</i>")
-    try: await msg.edit_text(text)
-    except: pass
+    try:
+        await msg.edit_text(text)
+    except:
+        pass
 
 async def downloader_task(message: Message, progress_message: Message, job_id: int):
-    temp_files = []
     try:
         source = message.input.strip() if message.input else message.replied
         filename = "Unknown"
 
-        if isinstance(source, str): # It's a link
-            if is_youtube_link(source):
+        if isinstance(source, str):
+            if is_youtube_like_link(source):
                 title_cmd = f'yt-dlp --get-title "{source}"'
-                filename, _, _ = await run_command(title_cmd); filename += ".mp4"
+                filename, _, _ = await run_command(title_cmd)
+                filename = f"{filename or 'video'}.mp4"
                 command = f'yt-dlp --progress -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 -o "{TEMP_DIR}{filename}" "{source}"'
                 await run_command_with_progress(command, progress_message, filename, job_id)
                 downloaded_path = os.path.join(TEMP_DIR, filename)
@@ -69,14 +80,14 @@ async def downloader_task(message: Message, progress_message: Message, job_id: i
                     downloaded_path = zip_out + ".zip"
             elif is_http_link(source):
                 downloaded_path = await _download_http(source, progress_message, job_id)
-            else: raise ValueError("Unsupported link type.")
-        else: # It's a replied media message
+            else:
+                raise ValueError("Unsupported link type.")
+        else:
             media_obj = (source.photo or source.video or source.animation or source.document or source.audio or source.voice)
             filename = getattr(media_obj, 'file_name', "replied_media")
             await progress_message.edit(f"<code>Downloading: {html.escape(filename)}</code>")
             downloaded_path = await bot.download_media(source)
 
-        temp_files.append(downloaded_path)
         filename = os.path.basename(downloaded_path)
 
         start_time = time.time(); last_update = 0
@@ -132,9 +143,9 @@ async def _download_http(link: str, msg: Message, job_id: int):
                     await progress_display(downloaded, total_size, msg, start_time, "Downloading", filename, job_id)
                     last_update = time.time()
     return file_path
-def is_youtube_link(url: str): return bool(re.match(r"(https?://)?(www\.)?(youtube\.com|youtu\.?be)/.+", url))
+def is_youtube_like_link(url: str): return bool(re.match(r"(https?://)?(www\.)?.*\..*/.+", url)) and not url.startswith("magnet:?")
 def is_magnet_link(url: str): return url.startswith("magnet:?")
-def is_http_link(url: str): return url.startswith(("http://", "https://"))
+def is_http_link(url: str): return url.startswith(("http://", "https://")) and not is_youtube_like_link(url)
 
 @bot.add_cmd(cmd=["downloader", "dl"])
 async def downloader_handler(bot: BOT, message: Message):
@@ -161,7 +172,6 @@ async def cancel_handler(bot: BOT, message: Message):
         job_id = int(message.input.strip())
         if job_id in ACTIVE_JOBS:
             ACTIVE_JOBS[job_id].cancel()
-            # The cleanup and final message are handled in the task's exception block
             await message.delete()
         else:
             await message.edit(f"Job <code>{job_id}</code> not found or already completed.", del_in=ERROR_VISIBLE_DURATION)
