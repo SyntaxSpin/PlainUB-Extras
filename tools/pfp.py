@@ -21,7 +21,7 @@ async def pfp_handler(bot: BOT, message: Message):
         try:
             target_user = await bot.get_users(message.input)
         except Exception:
-            return await message.edit("User not found.", del_in=ERROR_VISIBLE_DURATION)
+            return await message.reply("User not found.", del_in=ERROR_VISIBLE_DURATION)
     elif message.replied:
         target_user = message.replied.from_user
     else:
@@ -46,7 +46,7 @@ async def pfp_handler(bot: BOT, message: Message):
             break
         
         if not media_sent:
-            return await message.edit("This user has no profile photo.", del_in=ERROR_VISIBLE_DURATION)
+            return await message.reply("This user has no profile photo.", del_in=ERROR_VISIBLE_DURATION)
 
         await progress_message.delete()
         await message.delete()
