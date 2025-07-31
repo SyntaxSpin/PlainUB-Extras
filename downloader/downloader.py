@@ -22,9 +22,20 @@ ACTIVE_JOBS = {}
 # --- Helper Functions ---
 def format_bytes(size_bytes: int) -> str:
     if size_bytes == 0: return "0 B"; size_name = ("B", "KB", "MB", "GB", "TB"); i = int(math.floor(math.log(size_bytes, 1024))); p = math.pow(1024, i); s = round(size_bytes / p, 2); return f"{s} {size_name[i]}"
+
 def format_eta(seconds: int) -> str:
-    if seconds is None or seconds < 0: return "N/A"; minutes, seconds = divmod(int(seconds), 60); hours, minutes = divmod(minutes, 60)
-    if hours > 0: return f"{hours:02d}:{minutes:02d}:{seconds:02d}"; return f"{minutes:02d}:{seconds:02d}"
+    if seconds is None or seconds < 0:
+        return "N/A"
+    
+    seconds = int(seconds)
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+
+    if hours > 0:
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    else:
+        return f"{minutes:02d}:{seconds:02d}"
+
 async def progress_display(current: int, total: int, msg: Message, start: float, status: str, filename: str, job_id: int):
     elapsed = time.time() - start;
     if elapsed == 0: return
@@ -83,7 +94,7 @@ async def downloader_task(link: str, progress_message: Message, job_id: int):
 @bot.add_cmd(cmd=["downloader", "dl"])
 async def downloader_handler(bot: BOT, message: Message):
     if not message.input:
-        return await message.edit("<b>Usage:</b> .dl <http/magnet link>", del_in=ERROR_VISIBLE_DURATION)
+        return await message.edit("<b>Usage:</b> .dl [http/magnet link]", del_in=ERROR_VISIBLE_DURATION)
     job_id = int(time.time())
     progress = await message.reply(f"<code>Starting job {job_id}...</code>")
     task = asyncio.create_task(downloader_task(message.input, progress, job_id))
