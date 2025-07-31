@@ -3,7 +3,7 @@ import html
 import asyncio
 import shutil
 import math
-from pyrogram.types import Message, ReplyParameters
+from pyrogram.types import Message
 
 from app import BOT, bot
 
@@ -14,7 +14,19 @@ os.makedirs(DOWNLOADS_DIR, exist_ok=True)
 ERROR_VISIBLE_DURATION = 8
 
 def format_bytes(size_bytes: int) -> str:
-    if size_bytes == 0: return "0 B"; size_name = ("B", "KB", "MB", "GB", "TB"); i = int(math.floor(math.log(size_bytes, 1024))); p = math.pow(1024, i); s = round(size_bytes / p, 2); return f"{s} {size_name[i]}"
+    if size_bytes == 0: return "0 B"
+    size_name = ("B", "KB", "MB", "GB", "TB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return f"{s} {size_name[i]}"
+
+async def handle_error(message: Message, error_text: str):
+    """Replies with an error, deletes the command immediately, and sets the error to self-destruct."""
+    error_msg = await message.reply(error_text)
+    await message.delete()
+    await asyncio.sleep(ERROR_VISIBLE_DURATION)
+    await error_msg.delete()
 
 @bot.add_cmd(cmd="listfiles")
 async def listfiles_handler(bot: BOT, message: Message):
@@ -26,23 +38,23 @@ async def listfiles_handler(bot: BOT, message: Message):
     """
     try:
         files = os.listdir(DOWNLOADS_DIR)
-        if not files:
-            return await message.edit("Your downloads folder is empty.", del_in=ERROR_VISIBLE_DURATION)
-        
         file_list = []
-        for f in sorted(files):
-            file_path = os.path.join(DOWNLOADS_DIR, f)
-            if os.path.isfile(file_path):
-                file_size = os.path.getsize(file_path)
-                file_list.append(f"<code>- {html.escape(f)}</code>  <i>({format_bytes(file_size)})</i>")
-        
+        if files:
+            for f in sorted(files):
+                file_path = os.path.join(DOWNLOADS_DIR, f)
+                if os.path.isfile(file_path):
+                    file_size = os.path.getsize(file_path)
+                    file_list.append(f"<code>- {html.escape(f)}</code>  <i>({format_bytes(file_size)})</i>")
+
         if not file_list:
-            return await message.edit("Your downloads folder is empty.", del_in=ERROR_VISIBLE_DURATION)
-            
+            await handle_error(message, "Your downloads folder is empty.")
+            return
+
         final_report = "<b>Downloaded Files:</b>\n" + "\n".join(file_list)
-        await message.edit(final_report)
+        await message.reply(final_report)
+        await message.delete()
     except Exception as e:
-        await message.edit(f"<b>Error:</b> Could not list files.\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
+        await handle_error(message, f"<b>Error:</b> Could not list files.\n<code>{html.escape(str(e))}</code>")
 
 @bot.add_cmd(cmd="send")
 async def send_handler(bot: BOT, message: Message):
@@ -53,17 +65,18 @@ async def send_handler(bot: BOT, message: Message):
         .send [filename]
     """
     if not message.input:
-        return await message.edit("<b>Usage:</b> .send <filename>", del_in=ERROR_VISIBLE_DURATION)
-    
+        await handle_error(message, "<b>Usage:</b> .send [filename]")
+        return
+
     filename = message.input.strip()
     file_path = os.path.join(DOWNLOADS_DIR, filename)
-    
+
     if not os.path.exists(file_path) or not os.path.isfile(file_path):
-        return await message.edit(f"File <code>{html.escape(filename)}</code> not found in downloads.", del_in=ERROR_VISIBLE_DURATION)
+        await handle_error(message, f"File <code>{html.escape(filename)}</code> not found in downloads.")
+        return
 
     progress = await message.reply(f"<code>Uploading {html.escape(filename)}...</code>")
     try:
-        # Use reply_to_message_id of the command itself
         await bot.send_document(
             chat_id=message.chat.id,
             document=file_path,
@@ -72,7 +85,8 @@ async def send_handler(bot: BOT, message: Message):
         await progress.delete()
         await message.delete()
     except Exception as e:
-        await progress.edit(f"<b>Error:</b> Could not send file.\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
+        await progress.delete()
+        await handle_error(message, f"<b>Error:</b> Could not send file.\n<code>{html.escape(str(e))}</code>")
 
 @bot.add_cmd(cmd="delete")
 async def delete_handler(bot: BOT, message: Message):
@@ -84,23 +98,24 @@ async def delete_handler(bot: BOT, message: Message):
         .delete all
     """
     if not message.input:
-        return await message.edit("<b>Usage:</b> .delete <filename> OR .delete all", del_in=ERROR_VISIBLE_DURATION)
+        await handle_error(message, "<b>Usage:</b> .delete [filename] OR .delete all")
+        return
 
     target = message.input.strip()
 
-    if target.lower() == "all":
-        try:
+    try:
+        if target.lower() == "all":
             shutil.rmtree(DOWNLOADS_DIR)
             os.makedirs(DOWNLOADS_DIR)
-            await message.edit("✅ All files in downloads folder have been deleted.", del_in=ERROR_VISIBLE_DURATION)
-        except Exception as e:
-            await message.edit(f"<b>Error:</b> Could not clear downloads folder.\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
-    else:
-        file_path = os.path.join(DOWNLOADS_DIR, target)
-        if not os.path.exists(file_path) or not os.path.isfile(file_path):
-            return await message.edit(f"File <code>{html.escape(target)}</code> not found.", del_in=ERROR_VISIBLE_DURATION)
-        try:
+            await message.reply("✅ All files in downloads folder have been deleted.")
+        else:
+            file_path = os.path.join(DOWNLOADS_DIR, target)
+            if not os.path.exists(file_path) or not os.path.isfile(file_path):
+                await handle_error(message, f"File <code>{html.escape(target)}</code> not found.")
+                return
             os.remove(file_path)
-            await message.edit(f"✅ File <code>{html.escape(target)}</code> has been deleted.", del_in=ERROR_VISIBLE_DURATION)
-        except Exception as e:
-            await message.edit(f"<b>Error:</b> Could not delete file.\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
+            await message.reply(f"✅ File <code>{html.escape(target)}</code> has been deleted.")
+        
+        await message.delete()
+    except Exception as e:
+        await handle_error(message, f"<b>Error:</b> Could not perform delete operation.\n<code>{html.escape(str(e))}</code>")
