@@ -105,7 +105,7 @@ async def enhance_handler(bot: BOT, message: Message):
         
         temp_files.append(modified_path)
         
-        await progress_message.edit("<code>Sending as document...</code>")
+        await progress_message.edit("<code>Sending as file...</code>")
         
         caption = f"Enhanced to: `{new_width}x{new_height}`"
         reply_params = ReplyParameters(message_id=replied_msg.id)
