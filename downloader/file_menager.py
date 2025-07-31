@@ -21,12 +21,15 @@ def format_bytes(size_bytes: int) -> str:
     s = round(size_bytes / p, 2)
     return f"{s} {size_name[i]}"
 
-async def handle_error(message: Message, error_text: str):
-    """Replies with an error, deletes the command immediately, and sets the error to self-destruct."""
+async def handle_error_and_cleanup(message: Message, error_text: str):
+    """Sends an error message, waits, and deletes both messages together."""
     error_msg = await message.reply(error_text)
-    await message.delete()
     await asyncio.sleep(ERROR_VISIBLE_DURATION)
-    await error_msg.delete()
+    try:
+        await error_msg.delete()
+        await message.delete()
+    except:
+        pass
 
 @bot.add_cmd(cmd="listfiles")
 async def listfiles_handler(bot: BOT, message: Message):
@@ -47,14 +50,14 @@ async def listfiles_handler(bot: BOT, message: Message):
                     file_list.append(f"<code>- {html.escape(f)}</code>  <i>({format_bytes(file_size)})</i>")
 
         if not file_list:
-            await handle_error(message, "Your downloads folder is empty.")
+            await handle_error_and_cleanup(message, "Your downloads folder is empty.")
             return
 
         final_report = "<b>Downloaded Files:</b>\n" + "\n".join(file_list)
         await message.reply(final_report)
         await message.delete()
     except Exception as e:
-        await handle_error(message, f"<b>Error:</b> Could not list files.\n<code>{html.escape(str(e))}</code>")
+        await handle_error_and_cleanup(message, f"<b>Error:</b> Could not list files.\n<code>{html.escape(str(e))}</code>")
 
 @bot.add_cmd(cmd="send")
 async def send_handler(bot: BOT, message: Message):
@@ -65,14 +68,14 @@ async def send_handler(bot: BOT, message: Message):
         .send [filename]
     """
     if not message.input:
-        await handle_error(message, "<b>Usage:</b> .send [filename]")
+        await handle_error_and_cleanup(message, "<b>Usage:</b> .send [filename]")
         return
 
     filename = message.input.strip()
     file_path = os.path.join(DOWNLOADS_DIR, filename)
 
     if not os.path.exists(file_path) or not os.path.isfile(file_path):
-        await handle_error(message, f"File <code>{html.escape(filename)}</code> not found in downloads.")
+        await handle_error_and_cleanup(message, f"File <code>{html.escape(filename)}</code> not found in downloads.")
         return
 
     progress = await message.reply(f"<code>Uploading {html.escape(filename)}...</code>")
@@ -86,7 +89,7 @@ async def send_handler(bot: BOT, message: Message):
         await message.delete()
     except Exception as e:
         await progress.delete()
-        await handle_error(message, f"<b>Error:</b> Could not send file.\n<code>{html.escape(str(e))}</code>")
+        await handle_error_and_cleanup(message, f"<b>Error:</b> Could not send file.\n<code>{html.escape(str(e))}</code>")
 
 @bot.add_cmd(cmd="delete")
 async def delete_handler(bot: BOT, message: Message):
@@ -98,7 +101,7 @@ async def delete_handler(bot: BOT, message: Message):
         .delete all
     """
     if not message.input:
-        await handle_error(message, "<b>Usage:</b> .delete [filename] OR .delete all")
+        await handle_error_and_cleanup(message, "<b>Usage:</b> .delete [filename] OR .delete all")
         return
 
     target = message.input.strip()
@@ -111,11 +114,11 @@ async def delete_handler(bot: BOT, message: Message):
         else:
             file_path = os.path.join(DOWNLOADS_DIR, target)
             if not os.path.exists(file_path) or not os.path.isfile(file_path):
-                await handle_error(message, f"File <code>{html.escape(target)}</code> not found.")
+                await handle_error_and_cleanup(message, f"File <code>{html.escape(target)}</code> not found.")
                 return
             os.remove(file_path)
             await message.reply(f"✅ File <code>{html.escape(target)}</code> has been deleted.")
         
         await message.delete()
     except Exception as e:
-        await handle_error(message, f"<b>Error:</b> Could not perform delete operation.\n<code>{html.escape(str(e))}</code>")
+        await handle_error_and_cleanup(message, f"<b>Error:</b> Could not perform delete operation.\n<code>{html.escape(str(e))}</code>")
