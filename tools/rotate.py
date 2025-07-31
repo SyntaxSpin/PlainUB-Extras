@@ -22,7 +22,7 @@ async def run_command(command: str) -> tuple[str, str, int]:
     )
 
 def sync_rotate_image(input_path: str, angle: int) -> str:
-    """Synchronously rotates an image by a 90-degree increment."""
+    """Synchronously rotates an image by a given angle."""
     base, ext = os.path.splitext(os.path.basename(input_path))
     output_path = os.path.join(TEMP_DIR, f"{base}_rotated{ext}")
     with Image.open(input_path) as img:
@@ -37,14 +37,12 @@ async def sync_rotate_video_or_gif(input_path: str, rotations: int) -> str:
     base, ext = os.path.splitext(os.path.basename(input_path))
     output_path = os.path.join(TEMP_DIR, f"{base}_rotated{ext}")
     
-    # transpose=1 rotates 90 degrees clockwise. We chain it for multiple rotations.
-    # This filter is very stable and works for both video and GIF.
     transpose_filter = ",".join(["transpose=1"] * rotations)
     
     command = (
         f'ffmpeg -i "{input_path}" '
         f'-vf "{transpose_filter}" '
-        f'-c:a copy ' # Will be ignored for GIFs, but is crucial for videos
+        f'-c:a copy '
         f'-y "{output_path}"'
     )
 
@@ -59,20 +57,20 @@ async def sync_rotate_video_or_gif(input_path: str, rotations: int) -> str:
 async def rotate_handler(bot: BOT, message: Message):
     """
     CMD: ROTATE
-    INFO: Rotates the replied image, video, or GIF by 90-degree increments.
+    INFO: Rotates the replied image, video, or GIF.
     USAGE:
-        .rotate [times] (e.g., .rotate 2 for 180 degrees). Defaults to 1 (90 degrees). Max 3.
+        .rotate [times] (e.g., .rotate 2 for 180 degrees). Defaults to 1 (90 degrees).
     """
     replied_msg = message.replied
     is_media = replied_msg and (
-        replied_msg.photo or replied_msg.video or replied_msg.animation or
-        (replied_msg.document and replied_msg.document.mime_type.startswith(("image/", "video/", "image/gif")))
+        replied_msg.photo or replied_msg.video or replied_msg.animation or 
+        (replied_msg.document and replied_msg.document.mime_type.startswith(("image/", "video/")))
     )
     if not is_media:
         return await message.edit("Please reply to an image, video, or GIF to rotate it.", del_in=ERROR_VISIBLE_DURATION)
 
     try:
-        rotations = 1 # Default to one 90-degree rotation
+        rotations = 1
         if message.input:
             rotations = int(message.input.strip())
         if not (1 <= rotations <= 3):
@@ -85,19 +83,17 @@ async def rotate_handler(bot: BOT, message: Message):
     original_path, modified_path = "", ""
     temp_files = []
     try:
-        media_object = (replied_msg.photo or replied_msg.video or replied_msg.animation or replied_msg.document)
-        original_path = await bot.download_media(media_object)
+        original_path = await bot.download_media(replied_msg)
         temp_files.append(original_path)
         
         angle = rotations * 90
         await progress_message.edit(f"<code>Rotating by {angle} degrees...</code>")
         
         is_image = replied_msg.photo or (replied_msg.document and replied_msg.document.mime_type.startswith('image/'))
-        is_animation = replied_msg.animation or (replied_msg.document and replied_msg.document.mime_type == 'image/gif')
-
+        
         if is_image:
             modified_path = await asyncio.to_thread(sync_rotate_image, original_path, angle)
-        else: # is_video or is_animation
+        else:
             modified_path = await sync_rotate_video_or_gif(original_path, rotations)
             
         temp_files.append(modified_path)
@@ -109,9 +105,9 @@ async def rotate_handler(bot: BOT, message: Message):
 
         if is_image:
             await bot.send_photo(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
-        elif is_animation:
+        elif replied_msg.animation:
             await bot.send_animation(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
-        else: # is_video
+        else:
             await bot.send_video(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
         
         await progress_message.delete()
