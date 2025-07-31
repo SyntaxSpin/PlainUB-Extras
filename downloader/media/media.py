@@ -16,41 +16,32 @@ ERROR_VISIBLE_DURATION = 10
 ACTIVE_MEDIA_JOBS = {}
 
 def format_bytes(size_bytes: int) -> str:
-    if size_bytes == 0: return "0 B"; size_name = ("B", "KB", "MB", "GB", "TB"); i = int(math.floor(math.log(size_bytes, 1024))); p = math.pow(1024, i); s = round(size_bytes / p, 2); return f"{s} {size_name[i]}"
-
-def format_eta(seconds: int) -> str:
-    if seconds is None or seconds < 0:
-        return "N/A"
-    seconds = int(seconds)
-    minutes, seconds = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    if hours > 0:
-        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-    return f"{minutes:02d}:{seconds:02d}"
+    if size_bytes <= 0: return "0 B"; size_name = ("B", "KB", "MB", "GB", "TB"); i = int(math.floor(math.log(size_bytes, 1024))); p = math.pow(1024, i); s = round(size_bytes / p, 2); return f"{s} {size_name[i]}"
 
 def parse_yt_dlp_size(size_str: str) -> int:
     match = re.match(r'([0-9.]+)\s*(\w+B)', size_str, re.IGNORECASE)
     if not match: return 0
     value, unit = float(match.group(1)), match.group(2).upper()
-    unit_map = {'B': 1, 'KB': 10**3, 'KIB': 1024, 'MB': 10**6, 'MIB': 1024**2, 'GB': 10**9, 'GIB': 1024**3}
+    unit_map = {'B': 1, 'KB': 1000, 'KIB': 1024, 'MB': 1000**2, 'MIB': 1024**2, 'GB': 1000**3, 'GIB': 1024**3}
     return int(value * unit_map.get(unit, 1))
 
-async def progress_display(current: int, total: int, msg: Message, start: float, status: str, filename: str, job_id: int):
-    elapsed = time.time() - start
-    if elapsed == 0: return
-    speed = current / elapsed
-    percentage = current * 100 / total if total > 0 else 0
-    eta = (total - current) / speed if speed > 0 else 0
-    bar = '█' * int(10 * percentage // 100) + '░' * (10 - int(10 * percentage // 100))
-    text = (f"<b>{status}:</b> <code>{html.escape(filename)}</code>\n\n"
-            f"<code>[{bar}] {percentage:.1f}%</code>\n"
-            f"<b>Progress:</b> <code>{format_bytes(current)} / {format_bytes(total)}</code>\n"
-            f"<b>Speed:</b> <code>{format_bytes(speed)}/s</code> | <b>ETA:</b> <code>{format_eta(eta)}</code>\n"
-            f"<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancelmd {job_id} to stop)</i>")
-    try:
-        await msg.edit_text(text)
-    except:
-        pass
+async def progress_display(msg: Message, status: str, filename: str, job_id: int, **kwargs):
+    text_lines = [f"<b>{status}:</b> <code>{html.escape(filename)}</code>\n"]
+    
+    if 'percentage' in kwargs:
+        bar = '█' * int(kwargs['percentage'] // 10) + '░' * (10 - int(kwargs['percentage'] // 10))
+        text_lines.append(f"<code>[{bar}] {kwargs['percentage']:.1f}%</code>")
+
+    if 'current_bytes' in kwargs and 'total_size_str' in kwargs:
+        text_lines.append(f"<b>Progress:</b> <code>{format_bytes(kwargs['current_bytes'])} / {kwargs['total_size_str']}</code>")
+
+    if 'speed_str' in kwargs and 'eta_str' in kwargs:
+        text_lines.append(f"<b>Speed:</b> <code>{kwargs['speed_str']}</code> | <b>ETA:</b> <code>{kwargs['eta_str']}</code>")
+
+    text_lines.append(f"\n<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancelmd {job_id} to stop)</i>")
+    
+    try: await msg.edit_text("\n".join(text_lines))
+    except: pass
 
 async def run_command_with_progress(command: str, msg: Message, filename: str, job_id: int):
     process = await asyncio.create_subprocess_shell(
@@ -59,8 +50,8 @@ async def run_command_with_progress(command: str, msg: Message, filename: str, j
     ACTIVE_MEDIA_JOBS[job_id]["process"] = process
     
     progress_regex = re.compile(
-        r"\[download\]\s+"
-        r"([0-9.]+?)%\s+of\s+~?\s*([0-9.]+\w{1,3}B)\s+at\s+([0-9.]+\w{1,3}B/s)\s+ETA\s+([0-9:]{4,})"
+        r"\[download\]\s+([0-9.]+?)%\s+of\s+~?\s*([0-9.]+\w{1,3}B)"
+        r"(?:\s+at\s+([0-9.]+\w{1,3}B/s)\s+ETA\s+([0-9:]{4,}))?"
     )
     
     last_update = 0
@@ -79,6 +70,10 @@ async def run_command_with_progress(command: str, msg: Message, filename: str, j
         
         line_text = line.decode('utf-8', 'replace').strip()
         output_lines.append(line_text)
+
+        if "[Merger]" in line_text and time.time() - last_update > 2:
+            await progress_display(msg, "Processing", filename, job_id, percentage=100.0)
+            last_update = time.time()
         
         match = progress_regex.search(line_text)
         if match and time.time() - last_update > 2:
@@ -90,15 +85,11 @@ async def run_command_with_progress(command: str, msg: Message, filename: str, j
             total_bytes = parse_yt_dlp_size(total_size_str)
             current_bytes = int((total_bytes * percentage) / 100)
             
-            bar = '█' * int(percentage // 10) + '░' * (10 - int(percentage // 10))
-            text = (f"<b>Downloading:</b> <code>{html.escape(filename)}</code>\n\n"
-                    f"<code>[{bar}] {percentage:.1f}%</code>\n"
-                    f"<b>Progress:</b> <code>{format_bytes(current_bytes)} / {total_size_str}</code>\n"
-                    f"<b>Speed:</b> <code>{speed_str}</code> | <b>ETA:</b> <code>{eta_str}</code>\n"
-                    f"<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancelmd {job_id} to stop)</i>")
-            
-            try: await msg.edit_text(text)
-            except: pass
+            await progress_display(
+                msg, "Downloading", filename, job_id,
+                percentage=percentage, current_bytes=current_bytes, total_size_str=total_size_str,
+                speed_str=speed_str or "N/A", eta_str=eta_str or "N/A"
+            )
             last_update = time.time()
 
     await process.wait()
@@ -112,13 +103,11 @@ async def run_command(command: str):
 
 async def media_downloader_task(link: str, progress_message: Message, job_id: int, original_message: Message):
     try:
-        title_cmd = f'yt-dlp --get-title "{link}"'
-        title, _, _ = await run_command(title_cmd)
-        display_filename = f"{title or 'media'}"
+        title, _, _ = await run_command(f'yt-dlp --get-title "{link}"')
+        display_filename = title or "media"
 
         base_filename = str(job_id)
         output_template = f"{TEMP_DIR}{base_filename}.%(ext)s"
-        
         command = f'yt-dlp --progress --newline --extractor-args "generic:impersonate=chrome110" -f "bv*+ba/b" --merge-output-format mp4 -o "{output_template}" "{link}"'
         
         await run_command_with_progress(command, progress_message, display_filename, job_id)
@@ -128,27 +117,17 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
             if file.startswith(base_filename):
                 downloaded_path = os.path.join(TEMP_DIR, file)
                 break
-        
         if not downloaded_path:
             raise FileNotFoundError("yt-dlp finished but the output file was not found.")
 
-        actual_filename = os.path.basename(downloaded_path)
-        is_image = actual_filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
-
-        start_time = time.time(); last_update = 0
-        async def upload_progress(current, total):
-            nonlocal last_update
-            if time.time() - last_update > 5:
-                await progress_display(current, total, progress_message, start_time, "Uploading", actual_filename, job_id)
-                last_update = time.time()
-
+        is_image = downloaded_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
         reply_params = ReplyParameters(message_id=original_message.id)
         caption = f"Downloaded: <code>{html.escape(display_filename)}</code>"
         
         if is_image:
-            await bot.send_photo(chat_id=original_message.chat.id, photo=downloaded_path, caption=caption, reply_parameters=reply_params, progress=upload_progress)
+            await bot.send_photo(chat_id=original_message.chat.id, photo=downloaded_path, caption=caption, reply_parameters=reply_params)
         else:
-            await bot.send_video(chat_id=original_message.chat.id, video=downloaded_path, caption=caption, reply_parameters=reply_params, progress=upload_progress)
+            await bot.send_video(chat_id=original_message.chat.id, video=downloaded_path, caption=caption, reply_parameters=reply_params)
         
         await progress_message.delete(); await original_message.delete()
     except asyncio.CancelledError:
@@ -161,10 +140,10 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
 @bot.add_cmd(cmd=["media", "md"])
 async def media_dl_handler(bot: BOT, message: Message):
     if not message.input:
-        return await message.reply("Please provide a link from a media platform (YouTube, TikTok, etc.).", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Please provide a link to download.", del_in=ERROR_VISIBLE_DURATION)
     link = message.input.strip()
     job_id = int(time.time())
-    progress_message = await message.reply(f"<code>Starting media downloading job {job_id}...</code>")
+    progress_message = await message.reply(f"<code>Starting media job {job_id}...</code>")
     task = asyncio.create_task(media_downloader_task(link, progress_message, job_id, message))
     ACTIVE_MEDIA_JOBS[job_id] = {"task": task, "process": None}
     try: await task
@@ -174,12 +153,12 @@ async def media_dl_handler(bot: BOT, message: Message):
 
 @bot.add_cmd(cmd=["cancelmedia", "cancelmd"])
 async def cancel_media_handler(bot: BOT, message: Message):
-    if not message.input: return await message.reply("Please provide a Job ID to cancel.", del_in=ERROR_VISIBLE_DURATION)
+    if not message.input: return await message.reply("Please provide a Job ID.", del_in=ERROR_VISIBLE_DURATION)
     try:
         job_id = int(message.input.strip())
         if job_id in ACTIVE_MEDIA_JOBS:
-            if ACTIVE_MEDIA_JOBS[job_id].get("process"):
-                try: ACTIVE_MEDIA_JOBS[job_id]["process"].kill()
+            if process := ACTIVE_MEDIA_JOBS[job_id].get("process"):
+                try: process.kill()
                 except: pass
             ACTIVE_MEDIA_JOBS[job_id]["task"].cancel()
             await message.delete()
