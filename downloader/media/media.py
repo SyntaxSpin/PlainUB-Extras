@@ -15,7 +15,6 @@ ERROR_VISIBLE_DURATION = 10
 
 ACTIVE_MEDIA_JOBS = {}
 
-# --- Helper Functions (Identical to downloader.py for consistency) ---
 def format_bytes(size_bytes: int) -> str:
     if size_bytes == 0: return "0 B"; size_name = ("B", "KB", "MB", "GB", "TB"); i = int(math.floor(math.log(size_bytes, 1024))); p = math.pow(1024, i); s = round(size_bytes / p, 2); return f"{s} {size_name[i]}"
 def format_eta(seconds: int) -> str:
@@ -36,40 +35,31 @@ async def progress_display(current: int, total: int, msg: Message, start: float,
 async def run_command_with_progress(command: str, msg: Message, filename: str, job_id: int):
     process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
     ACTIVE_MEDIA_JOBS[job_id]["process"] = process
-    last_update = 0; output_lines = []
-    while True:
-        line = await process.stdout.readline();
-        if not line: break
-        line_text = line.decode('utf-8', 'replace').strip(); output_lines.append(line_text)
-        if time.time() - last_update > 5:
-            display_text = "\n".join(output_lines[-5:])
-            await msg.edit(f"<b>Downloading:</b> <code>{html.escape(filename)}</code>\n\n<code>{html.escape(display_text)}</code>\n<b>Job ID:</b> <code>{job_id}</code>")
-            last_update = time.time()
-    await process.wait();
-    if process.returncode != 0: raise RuntimeError(f"Process failed:\n{'\n'.join(output_lines)}")
+    await msg.edit(f"<b>Downloading:</b> <code>{html.escape(filename)}</code>\n\n<i>Please wait, processing...</i>\n<b>Job ID:</b> <code>{job_id}</code>")
+    output = await process.stdout.read()
+    await process.wait()
+    output_text = output.decode('utf-8', 'replace').strip()
+    if process.returncode != 0:
+        raise RuntimeError(f"Process failed:\n{output_text}")
+
 async def run_command(command: str):
     process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
     stdout, stderr = await process.communicate()
     return (stdout.decode('utf-8', 'replace').strip(), stderr.decode('utf-8', 'replace').strip(), process.returncode)
 
-# --- Media Download Task (FIXED) ---
 async def media_downloader_task(link: str, progress_message: Message, job_id: int, original_message: Message):
     try:
-        # Get title for display purposes only
         title_cmd = f'yt-dlp --get-title "{link}"'
         title, _, _ = await run_command(title_cmd)
         display_filename = f"{title or 'media'}"
 
-        # Use the unique and safe job_id as the base filename for downloading
         base_filename = str(job_id)
         output_template = f"{TEMP_DIR}{base_filename}.%(ext)s"
 
-        command = f'yt-dlp --progress --extractor-args "generic:impersonate=chrome110" -f "bv*+ba/b" --merge-output-format mp4 -o "{output_template}" "{link}"'
+        command = f'yt-dlp --extractor-args "generic:impersonate=chrome110" -f "bv*+ba/b" --merge-output-format mp4 -o "{output_template}" "{link}"'
         
-        # Pass the user-friendly display_filename to the progress function
         await run_command_with_progress(command, progress_message, display_filename + ".mp4", job_id)
 
-        # Reliably find the downloaded file by its base_filename (job_id)
         downloaded_path = None
         for file in os.listdir(TEMP_DIR):
             if file.startswith(base_filename):
@@ -79,7 +69,6 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
         if not downloaded_path:
             raise FileNotFoundError("yt-dlp finished but the output file was not found.")
 
-        # Use the display filename for the caption, but the actual path for uploading
         caption_text = f"Downloaded: <code>{html.escape(display_filename)}</code>"
         actual_filename = os.path.basename(downloaded_path)
         is_image = actual_filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
@@ -94,9 +83,9 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
         reply_params = ReplyParameters(message_id=original_message.id)
 
         if is_image:
-            await bot.send_photo(chat_id=original_message.chat_id, photo=downloaded_path, caption=caption_text, reply_parameters=reply_params, progress=upload_progress)
-        else: # Video
-            await bot.send_video(chat_id=original_message.chat_id, video=downloaded_path, caption=caption_text, reply_parameters=reply_params, progress=upload_progress)
+            await bot.send_photo(chat_id=original_message.chat.id, photo=downloaded_path, caption=caption_text, reply_parameters=reply_params, progress=upload_progress)
+        else:
+            await bot.send_video(chat_id=original_message.chat.id, video=downloaded_path, caption=caption_text, reply_parameters=reply_params, progress=upload_progress)
 
         await progress_message.delete()
         try:
@@ -109,13 +98,11 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
     except Exception as e:
         await progress_message.edit(f"<b>Error in job <code>{job_id}</code>:</b>\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
     finally:
-        # Proper cleanup of the temp directory
         if os.path.exists(TEMP_DIR):
             shutil.rmtree(TEMP_DIR, ignore_errors=True)
         os.makedirs(TEMP_DIR, exist_ok=True)
 
 
-# --- Main Handlers ---
 @bot.add_cmd(cmd=["media", "md"])
 async def media_dl_handler(bot: BOT, message: Message):
     if not message.input:
