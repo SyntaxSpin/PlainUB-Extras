@@ -17,7 +17,7 @@ ERROR_VISIBLE_DURATION = 10
 
 ACTIVE_JOBS = {}
 
-# --- Helper Functions for Progress Display ---
+# --- Helper Functions ---
 def format_bytes(size_bytes: int) -> str:
     if size_bytes == 0: return "0 B"; size_name = ("B", "KB", "MB", "GB", "TB"); i = int(math.floor(math.log(size_bytes, 1024))); p = math.pow(1024, i); s = round(size_bytes / p, 2); return f"{s} {size_name[i]}"
 def format_eta(seconds: int) -> str:
@@ -35,11 +35,70 @@ async def progress_display(current: int, total: int, msg: Message, start: float,
             f"<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancel {job_id} to stop)</i>")
     try: await msg.edit_text(text)
     except: pass
+async def run_command(command: str):
+    process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    stdout, stderr = await process.communicate()
+    return (stdout.decode('utf-8', 'replace').strip(), stderr.decode('utf-8', 'replace').strip(), process.returncode)
+async def run_command_with_progress(command: str, msg: Message, filename: str, job_id: int):
+    process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+    last_update = 0; output_lines = []
+    while True:
+        line = await process.stdout.readline();
+        if not line: break
+        line_text = line.decode('utf-8', 'replace').strip(); output_lines.append(line_text)
+        if time.time() - last_update > 5:
+            display_text = "\n".join(output_lines[-5:])
+            await msg.edit(f"<b>Downloading:</b> <code>{html.escape(filename)}</code>\n\n<code>{html.escape(display_text)}</code>\n<b>Job ID:</b> <code>{job_id}</code>")
+            last_update = time.time()
+    await process.wait();
+    if process.returncode != 0: raise RuntimeError(f"Process failed:\n{'\n'.join(output_lines)}")
 
-# --- Core Logic Functions ---
+# --- Specialized Downloaders ---
+async def _download_http(link: str, msg: Message, job_id: int):
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+    with requests.get(link, stream=True, headers=headers) as r:
+        r.raise_for_status()
+        filename = os.path.basename(unquote(urlparse(r.url).path)) or "downloaded_file"
+        file_path = os.path.join(TEMP_DIR, filename)
+        total_size = int(r.headers.get('content-length', 0))
+        downloaded = 0; start_time = time.time(); last_update = 0
+        with open(file_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk); downloaded += len(chunk)
+                if time.time() - last_update > 5 and total_size > 0:
+                    await progress_display(downloaded, total_size, msg, start_time, "Downloading", filename, job_id)
+                    last_update = time.time()
+    return file_path
+async def _download_yt_dlp(link: str, msg: Message, job_id: int):
+    title_cmd = f'yt-dlp --get-title "{link}"'; title, _, _ = await run_command(title_cmd)
+    filename = f"{title or 'video'}.mp4"
+    command = f'yt-dlp --progress --extractor-args "generic:impersonate=chrome110" -f "bv[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/best" --merge-output-format mp4 -o "{TEMP_DIR}%(title)s.%(ext)s" "{link}"'
+    await run_command_with_progress(command, msg, filename, job_id)
+    for file in os.listdir(TEMP_DIR):
+        if file.endswith((".mp4", ".mkv", ".webm")): return os.path.join(TEMP_DIR, file)
+    raise FileNotFoundError("Could not find the downloaded video file.")
+async def _download_torrent(link: str, msg: Message, job_id: int):
+    command = f'aria2c --summary-interval=1 --seed-time=0 -d "{TEMP_DIR}" "{link}"'
+    await run_command_with_progress(command, msg, "Torrent Download", job_id)
+    files = [f for f in os.listdir(TEMP_DIR) if not f.endswith((".aria2", ".torrent"))]
+    if len(files) == 1: return os.path.join(TEMP_DIR, files[0])
+    elif len(files) > 1:
+        await msg.edit("<code>Zipping torrent files...</code>")
+        zip_out = os.path.join(TEMP_DIR, "torrent_download"); shutil.make_archive(zip_out, 'zip', TEMP_DIR)
+        return zip_out + ".zip"
+    raise FileNotFoundError("Could not find any downloaded files from the torrent.")
+
+# --- Link Detection ---
+def is_video_platform_link(url: str):
+    platforms = ['youtube.com', 'youtu.be', 'tiktok.com', 'instagram.com', 'facebook.com', 'fb.watch', 'twitter.com', 'x.com']
+    return any(platform in url for platform in platforms)
+def is_magnet_link(url: str): return url.startswith("magnet:?")
+def is_http_link(url: str): return url.startswith(("http://", "https://"))
+
+# --- Main Task ---
 async def downloader_task(message: Message, progress_message: Message, job_id: int):
     try:
-        source = message.input.strip() if message.input else message.replied; filename = "Unknown"
+        source = message.input.strip() if message.input else message.replied
         if isinstance(source, str):
             if is_video_platform_link(source): downloaded_path = await _download_yt_dlp(source, progress_message, job_id)
             elif is_magnet_link(source): downloaded_path = await _download_torrent(source, progress_message, job_id)
@@ -69,67 +128,11 @@ async def downloader_task(message: Message, progress_message: Message, job_id: i
     finally:
         shutil.rmtree(TEMP_DIR, ignore_errors=True); os.makedirs(TEMP_DIR, exist_ok=True)
 
-# --- Helper functions for the task ---
-async def run_command(command: str):
-    process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-    stdout, stderr = await process.communicate()
-    return (stdout.decode('utf-8', 'replace').strip(), stderr.decode('utf-8', 'replace').strip(), process.returncode)
-async def run_command_with_progress(command: str, msg: Message, filename: str, job_id: int):
-    process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
-    last_update = 0; output_lines = []
-    while True:
-        line = await process.stdout.readline();
-        if not line: break
-        line_text = line.decode('utf-8', 'replace').strip(); output_lines.append(line_text)
-        if time.time() - last_update > 5:
-            display_text = "\n".join(output_lines[-5:])
-            await msg.edit(f"<b>Downloading:</b> <code>{html.escape(filename)}</code>\n\n<code>{html.escape(display_text)}</code>\n<b>Job ID:</b> <code>{job_id}</code>")
-            last_update = time.time()
-    await process.wait();
-    if process.returncode != 0: raise RuntimeError(f"Process failed:\n{'\n'.join(output_lines)}")
-async def _download_http(link: str, msg: Message, job_id: int):
-    with requests.get(link, stream=True, headers={'User-Agent': 'Mozilla/5.0'}) as r:
-        r.raise_for_status()
-        filename = os.path.basename(unquote(urlparse(r.url).path)) or "downloaded_file"
-        file_path = os.path.join(TEMP_DIR, filename)
-        total_size = int(r.headers.get('content-length', 0))
-        downloaded = 0; start_time = time.time(); last_update = 0
-        with open(file_path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk); downloaded += len(chunk)
-                if time.time() - last_update > 5 and total_size > 0:
-                    await progress_display(downloaded, total_size, msg, start_time, "Downloading", filename, job_id)
-                    last_update = time.time()
-    return file_path
-async def _download_yt_dlp(link: str, msg: Message, job_id: int):
-    title_cmd = f'yt-dlp --get-title "{link}"'
-    title, _, _ = await run_command(title_cmd); filename = f"{title or 'video'}.mp4"
-    command = f'yt-dlp --progress --extractor-args "generic:impersonate=chrome110" -f "bv[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/best" --merge-output-format mp4 -o "{TEMP_DIR}%(title)s.%(ext)s" "{link}"'
-    await run_command_with_progress(command, msg, filename, job_id)
-    for file in os.listdir(TEMP_DIR):
-        if file.endswith((".mp4", ".mkv", ".webm")): return os.path.join(TEMP_DIR, file)
-    raise FileNotFoundError("Could not find the downloaded video file.")
-async def _download_torrent(link: str, msg: Message, job_id: int):
-    command = f'aria2c --summary-interval=1 --seed-time=0 -d "{TEMP_DIR}" "{link}"'
-    await run_command_with_progress(command, msg, "Torrent Download", job_id)
-    files = [f for f in os.listdir(TEMP_DIR) if not f.endswith((".aria2", ".torrent"))]
-    if len(files) == 1: return os.path.join(TEMP_DIR, files[0])
-    elif len(files) > 1:
-        await msg.edit("<code>Zipping torrent files...</code>")
-        zip_out = os.path.join(TEMP_DIR, "torrent_download"); shutil.make_archive(zip_out, 'zip', TEMP_DIR)
-        return zip_out + ".zip"
-    raise FileNotFoundError("Could not find any downloaded files from the torrent.")
-def is_video_platform_link(url: str):
-    platforms = ['youtube.com', 'youtu.be', 'tiktok.com', 'instagram.com', 'facebook.com', 'fb.watch', 'twitter.com', 'x.com']
-    return any(platform in url for platform in platforms)
-def is_magnet_link(url: str): return url.startswith("magnet:?")
-def is_http_link(url: str): return url.startswith(("http://", "https://"))
-
 # --- Main Handlers ---
-@bot.add_cmd(cmd=["download", "dl"])
+@bot.add_cmd(cmd=["downloader", "dl"])
 async def downloader_handler(bot: BOT, message: Message):
     if not message.input and not (message.replied and message.replied.media):
-        return await message.edit("Please provide a link or reply to a file.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.edit("Please provide a link or reply to a file to download.", del_in=ERROR_VISIBLE_DURATION)
     job_id = int(time.time())
     progress_message = await message.reply(f"<code>Starting job {job_id}...</code>")
     task = asyncio.create_task(downloader_task(message, progress_message, job_id))
