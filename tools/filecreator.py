@@ -38,7 +38,7 @@ async def filecreator_handler(bot: BOT, message: Message):
     
     if not message.input:
         return await message.edit(
-            "<b>Usage:</b> .filecreate <filename.ext> [content]",
+            "<b>Usage:</b> .filecreate [filename.ext] (content)",
             del_in=ERROR_VISIBLE_DURATION
         )
 
