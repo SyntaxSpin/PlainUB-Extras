@@ -139,7 +139,7 @@ async def _download_http(link: str, msg: Message, job_id: int):
         with open(file_path, "wb") as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk); downloaded += len(chunk)
-                if time.time() - last_update > 5 and total_size > 0:
+                if time.time() - last_update > 2 and total_size > 0:
                     await progress_display(downloaded, total_size, msg, start_time, "Downloading", filename, job_id)
                     last_update = time.time()
     return file_path
