@@ -143,7 +143,7 @@ async def media_dl_handler(bot: BOT, message: Message):
         return await message.reply("Please provide a link to download.", del_in=ERROR_VISIBLE_DURATION)
     link = message.input.strip()
     job_id = int(time.time())
-    progress_message = await message.reply(f"<code>Starting media job {job_id}...</code>")
+    progress_message = await message.reply(f"<code>Starting media downloading job {job_id}...</code>")
     task = asyncio.create_task(media_downloader_task(link, progress_message, job_id, message))
     ACTIVE_MEDIA_JOBS[job_id] = {"task": task, "process": None}
     try: await task
