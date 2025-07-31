@@ -64,10 +64,10 @@ async def imagine_handler(bot: BOT, message: Message):
         .gen [text prompt]
     """
     if not CF_ACCOUNT_ID or not CF_API_TOKEN or "YOUR_KEY" in CF_API_TOKEN:
-        return await message.edit("<b>Cloudflare AI not configured.</b>", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("<b>Cloudflare AI not configured.</b>", del_in=ERROR_VISIBLE_DURATION)
 
     if not message.input:
-        return await message.edit("Please provide a text prompt.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Please provide a text prompt.", del_in=ERROR_VISIBLE_DURATION)
 
     prompt = message.input
     progress_message = await message.reply("<code>Generating...</code>")
@@ -105,7 +105,7 @@ async def imagine_handler(bot: BOT, message: Message):
 
     except Exception as e:
         error_text = f"<b>Error:</b> Could not generate image.\n<code>{html.escape(str(e))}</code>"
-        await progress_message.edit(error_text, del_in=ERROR_VISIBLE_DURATION)
+        await progress_message.reply(error_text, del_in=ERROR_VISIBLE_DURATION)
     finally:
         for f in temp_files:
             if f and os.path.exists(f):
