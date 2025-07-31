@@ -15,24 +15,25 @@ UBOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 DOWNLOADS_DIR = os.path.join(UBOT_DIR, "downloads/")
 os.makedirs(DOWNLOADS_DIR, exist_ok=True)
 ERROR_VISIBLE_DURATION = 10
-
 ACTIVE_JOBS = {}
 
 def format_bytes(size_bytes: int) -> str:
-    if size_bytes == 0: return "0 B"; size_name = ("B", "KB", "MB", "GB", "TB"); i = int(math.floor(math.log(size_bytes, 1024))); p = math.pow(1024, i); s = round(size_bytes / p, 2); return f"{s} {size_name[i]}"
+    if size_bytes <= 0: return "0 B"
+    size_name = ("B", "KB", "MB", "GB", "TB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return f"{s} {size_name[i]}"
 
 def format_eta(seconds: int) -> str:
-    if seconds is None or seconds < 0:
-        return "N/A"
+    if seconds is None or seconds < 0: return "N/A"
     seconds = int(seconds)
     minutes, seconds = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
-    if hours > 0:
-        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-    else:
-        return f"{minutes:02d}:{seconds:02d}"
+    if hours > 0: return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes:02d}:{seconds:02d}"
 
-async def progress_display(current: int, total: int, msg: Message, start: float, status: str, filename: str, job_id: int):
+async def progress_display(msg: Message, status: str, filename: str, job_id: int, current: int, total: int, start: float):
     elapsed = time.time() - start
     if elapsed == 0: return
     speed = current / elapsed
@@ -56,44 +57,32 @@ async def progress_display(current: int, total: int, msg: Message, start: float,
     except:
         pass
 
-async def run_command_with_progress(command: str, msg: Message, filename: str, job_id: int):
-    process = await asyncio.create_subprocess_shell(command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
-    ACTIVE_JOBS[job_id]["process"] = process
-    last_update = 0; output_lines = []
-    while True:
-        line = await process.stdout.readline();
-        if not line: break
-        line_text = line.decode('utf-8', 'replace').strip(); output_lines.append(line_text)
-        if time.time() - last_update > 5:
-            display_text = "\n".join(output_lines[-5:])
-            await msg.edit(f"<b>Downloading:</b> <code>{html.escape(filename)}</code>\n\n<code>{html.escape(display_text)}</code>\n<b>Job ID:</b> <code>{job_id}</code>")
-            last_update = time.time()
-    await process.wait();
-    if process.returncode != 0: raise RuntimeError(f"Process failed:\n{'\n'.join(output_lines)}")
-def is_magnet_link(url: str): return url.startswith("magnet:?")
-def is_http_link(url: str): return url.startswith(("http://", "https://"))
-
 async def downloader_task(link: str, progress_message: Message, job_id: int):
     file_path = None
+    filename = "download"
     try:
-        if is_magnet_link(link):
-            command = f'aria2c --summary-interval=1 --seed-time=0 -d "{DOWNLOADS_DIR}" "{link}"'
-            await run_command_with_progress(command, progress_message, "Torrent Download", job_id)
+        if link.startswith("magnet:?"):
+            command = f'aria2c --console-log-level=warn --summary-interval=1 --seed-time=0 -d "{DOWNLOADS_DIR}" "{link}"'
+            process = await asyncio.create_subprocess_shell(command)
+            ACTIVE_JOBS[job_id]["process"] = process
+            await progress_message.edit_text(f"<b>Downloading Torrent...</b>\n\n<i>(Progress is not available for torrents)</i>\n<b>Job ID:</b> <code>{job_id}</code>")
+            await process.wait()
+            if process.returncode != 0: raise RuntimeError("Aria2c process failed.")
             filename = "Torrent download"
-        elif is_http_link(link):
+        
+        elif link.startswith(("http://", "https://")):
             headers = {'User-Agent': 'Mozilla/5.0'}
             with requests.get(link, stream=True, headers=headers, timeout=20) as r:
                 r.raise_for_status()
                 
-                filename = None
                 if "content-disposition" in r.headers:
                     d = r.headers['content-disposition']
-                    filenames = re.findall('filename="(.+)"', d)
-                    if filenames:
-                        filename = unquote(filenames[0])
-                if not filename:
-                    filename = os.path.basename(unquote(urlparse(r.url).path))
-                filename = filename or f"download_{job_id}"
+                    filenames = re.findall('filename="?(.+?)"?$', d)
+                    if filenames: filename = unquote(filenames[0])
+                if filename == "download":
+                    parsed_path = unquote(urlparse(r.url).path)
+                    if os.path.basename(parsed_path): filename = os.path.basename(parsed_path)
+                    else: filename = f"download_{job_id}"
 
                 file_path = os.path.join(DOWNLOADS_DIR, filename)
                 total_size = int(r.headers.get('content-length', 0))
@@ -103,27 +92,27 @@ async def downloader_task(link: str, progress_message: Message, job_id: int):
                 
                 with open(file_path, "wb") as f:
                     for chunk in r.iter_content(chunk_size=8192):
-                        await asyncio.sleep(0) # Allows cancellation
+                        await asyncio.sleep(0)
                         if chunk:
                             f.write(chunk)
                             downloaded += len(chunk)
                             if time.time() - last_update > 2:
-                                await progress_display(downloaded, total_size, progress_message, start_time, "Downloading", filename, job_id)
+                                await progress_display(progress_message, "Downloading", filename, job_id, downloaded, total_size, start_time)
                                 last_update = time.time()
         else:
-            raise ValueError("Unsupported link type for .dl (use .media for platform videos)")
+            raise ValueError("Unsupported link type. Use .dl for HTTP/Magnet or .media for platform videos.")
         
-        await progress_message.edit(f"✅ <b>Download complete!</b>\nFile saved to: <code>{html.escape(filename)}</code>", del_in=20)
+        await progress_message.edit(f"✅ <b>Download complete!</b>\nFile saved: <code>{html.escape(filename)}</code>", del_in=20)
+
     except asyncio.CancelledError:
         await progress_message.edit(f"<b>Job <code>{job_id}</code> cancelled.</b>", del_in=ERROR_VISIBLE_DURATION)
-        if file_path and os.path.exists(file_path):
-            try: os.remove(file_path)
-            except OSError: pass
     except Exception as e:
         await progress_message.edit(f"<b>Error in job <code>{job_id}</code>:</b>\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
+    finally:
         if file_path and os.path.exists(file_path):
-            try: os.remove(file_path)
-            except OSError: pass
+            if "complete" not in await progress_message.get_text():
+                try: os.remove(file_path)
+                except OSError: pass
 
 @bot.add_cmd(cmd=["downloader", "dl"])
 async def downloader_handler(bot: BOT, message: Message):
@@ -131,7 +120,7 @@ async def downloader_handler(bot: BOT, message: Message):
         return await message.reply("<b>Usage:</b> .dl [http/magnet link]", del_in=ERROR_VISIBLE_DURATION)
     job_id = int(time.time())
     progress = await message.reply(f"<code>Starting job {job_id}...</code>")
-    task = asyncio.create_task(downloader_task(message.input, progress, job_id))
+    task = asyncio.create_task(downloader_task(message.input.strip(), progress, job_id))
     ACTIVE_JOBS[job_id] = {"task": task, "process": None}
     try: await task
     finally:
@@ -145,10 +134,10 @@ async def cancel_handler(bot: BOT, message: Message):
     try:
         job_id = int(message.input.strip())
         if job_id in ACTIVE_JOBS:
-            ACTIVE_JOBS[job_id]["task"].cancel()
             if ACTIVE_JOBS[job_id].get("process"):
                 try: ACTIVE_JOBS[job_id]["process"].kill()
-                except ProcessLookupError: pass
+                except: pass
+            ACTIVE_JOBS[job_id]["task"].cancel()
             await message.delete()
-        else: await message.reply(f"Job <code>{job_id}</code> not found.", del_in=ERROR_VISIBLE_DURATION)
+        else: await message.reply(f"Job <code>{job_id}</code> not found or already completed.", del_in=ERROR_VISIBLE_DURATION)
     except (ValueError, KeyError): await message.reply("Invalid Job ID.", del_in=ERROR_VISIBLE_DURATION)
