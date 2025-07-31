@@ -82,17 +82,17 @@ async def speed_handler(bot: BOT, message: Message):
     replied_msg = message.replied
     is_media = replied_msg and (replied_msg.video or replied_msg.audio or replied_msg.voice or (replied_msg.document and replied_msg.document.mime_type.startswith(("video/", "audio/"))))
     if not is_media:
-        return await message.edit("Please reply to a video or audio file.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Please reply to a video or audio file.", del_in=ERROR_VISIBLE_DURATION)
 
     if not message.input:
-        return await message.edit("Please specify a speed factor. Usage: `.speed 2.0`", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Please specify a speed factor. Usage: `.speed 2.0`", del_in=ERROR_VISIBLE_DURATION)
 
     try:
         speed_factor = float(message.input.strip())
         if speed_factor <= 0:
             raise ValueError("Speed factor must be a positive number.")
     except ValueError:
-        return await message.edit("Invalid speed factor. Please use a number like `5` or `0.5`.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Invalid speed factor. Please use a number like `5` or `0.5`.", del_in=ERROR_VISIBLE_DURATION)
 
     progress_message = await message.reply("<code>Downloading media...</code>")
     
