@@ -1,6 +1,7 @@
 import os
 import html
 import asyncio
+import math
 from PIL import Image
 from pyrogram.types import Message, ReplyParameters
 
@@ -21,27 +22,37 @@ async def run_command(command: str) -> tuple[str, str, int]:
         process.returncode
     )
 
-def sync_rotate_image(input_path: str, angle: int) -> str:
-    """Synchronously rotates an image by a given angle."""
+def sync_rotate_image(input_path: str, angle: float) -> str:
     base, ext = os.path.splitext(os.path.basename(input_path))
-    output_path = os.path.join(TEMP_DIR, f"{base}_rotated{ext}")
+    output_path = os.path.join(TEMP_DIR, f"{base}_rotated.png")
+    
     with Image.open(input_path) as img:
-        rotated_img = img.rotate(-angle, expand=True)
-        if rotated_img.mode in ("RGBA", "P"):
-            rotated_img = rotated_img.convert("RGB")
-        rotated_img.save(output_path)
+        rotated_img = img.rotate(-angle, expand=True, fillcolor='black')
+        
+        if rotated_img.mode == "RGBA":
+            final_img = Image.new("RGB", rotated_img.size, "black")
+            final_img.paste(rotated_img, (0, 0), rotated_img)
+        else:
+            final_img = rotated_img.convert("RGB")
+            
+        final_img.save(output_path, "PNG")
+        
     return output_path
 
-async def sync_rotate_video_or_gif(input_path: str, rotations: int) -> str:
-    """Synchronously rotates a video or GIF by applying the transpose filter N times."""
+async def sync_rotate_video_or_gif(input_path: str, angle: float) -> str:
     base, ext = os.path.splitext(os.path.basename(input_path))
     output_path = os.path.join(TEMP_DIR, f"{base}_rotated{ext}")
     
-    transpose_filter = ",".join(["transpose=1"] * rotations)
+    angle_rad = math.radians(angle)
+    
+    rotate_filter = (
+        f"rotate={angle_rad}:c=black:ow='iw*abs(cos({angle_rad}))+ih*abs(sin({angle_rad}))':"
+        f"oh='ih*abs(cos({angle_rad}))+iw*abs(sin({angle_rad}))'"
+    )
     
     command = (
         f'ffmpeg -i "{input_path}" '
-        f'-vf "{transpose_filter}" '
+        f'-vf "{rotate_filter}" '
         f'-c:a copy '
         f'-y "{output_path}"'
     )
@@ -55,28 +66,20 @@ async def sync_rotate_video_or_gif(input_path: str, rotations: int) -> str:
 
 @bot.add_cmd(cmd="rotate")
 async def rotate_handler(bot: BOT, message: Message):
-    """
-    CMD: ROTATE
-    INFO: Rotates the replied image, video, or GIF.
-    USAGE:
-        .rotate [times] (e.g., .rotate 2 for 180 degrees). Defaults to 1 (90 degrees).
-    """
     replied_msg = message.replied
     is_media = replied_msg and (
-        replied_msg.photo or replied_msg.video or replied_msg.animation or 
+        replied_msg.photo or replied_msg.video or replied_msg.animation or
         (replied_msg.document and replied_msg.document.mime_type.startswith(("image/", "video/")))
     )
     if not is_media:
         return await message.edit("Please reply to an image, video, or GIF to rotate it.", del_in=ERROR_VISIBLE_DURATION)
 
     try:
-        rotations = 1
+        angle = 90.0
         if message.input:
-            rotations = int(message.input.strip())
-        if not (1 <= rotations <= 3):
-            raise ValueError("Number of rotations must be 1, 2, or 3.")
+            angle = float(message.input.strip())
     except ValueError:
-        return await message.edit("Invalid input. Please provide a number between 1 and 3.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.edit("Invalid angle. Please provide a number (e.g., 45, -15.5).", del_in=ERROR_VISIBLE_DURATION)
 
     progress_message = await message.reply("<code>Downloading media...</code>")
     
@@ -86,15 +89,15 @@ async def rotate_handler(bot: BOT, message: Message):
         original_path = await bot.download_media(replied_msg)
         temp_files.append(original_path)
         
-        angle = rotations * 90
         await progress_message.edit(f"<code>Rotating by {angle} degrees...</code>")
         
         is_image = replied_msg.photo or (replied_msg.document and replied_msg.document.mime_type.startswith('image/'))
+        is_animation = replied_msg.animation
         
         if is_image:
             modified_path = await asyncio.to_thread(sync_rotate_image, original_path, angle)
         else:
-            modified_path = await sync_rotate_video_or_gif(original_path, rotations)
+            modified_path = await sync_rotate_video_or_gif(original_path, angle)
             
         temp_files.append(modified_path)
         
@@ -105,7 +108,7 @@ async def rotate_handler(bot: BOT, message: Message):
 
         if is_image:
             await bot.send_photo(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
-        elif replied_msg.animation:
+        elif is_animation:
             await bot.send_animation(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
         else:
             await bot.send_video(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
