@@ -57,10 +57,10 @@ async def resize_handler(bot: BOT, message: Message):
     replied_msg = message.replied
     is_media = replied_msg and (replied_msg.photo or replied_msg.video or replied_msg.animation or (replied_msg.document and replied_msg.document.mime_type.startswith(("image/", "video/"))))
     if not is_media:
-        return await message.edit("Please reply to an image, GIF, or video to resize it.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Please reply to an image, GIF, or video to resize it.", del_in=ERROR_VISIBLE_DURATION)
 
     if not message.input:
-        await message.edit("Please specify the new resolution. Usage: `.resize 1920x1080`", del_in=ERROR_VISIBLE_DURATION)
+        await message.reply("Please specify the new resolution. Usage: `.resize 1920x1080`", del_in=ERROR_VISIBLE_DURATION)
         return
 
     try:
@@ -69,7 +69,7 @@ async def resize_handler(bot: BOT, message: Message):
         if not (0 < width <= 8192 and 0 < height <= 8192):
             raise ValueError("Dimensions must be between 1 and 8192.")
     except (ValueError, IndexError):
-        await message.edit("Invalid resolution format. Please use `[width]x[height]`.", del_in=ERROR_VISIBLE_DURATION)
+        await message.reply("Invalid resolution format. Please use `[width]x[height]`.", del_in=ERROR_VISIBLE_DURATION)
         return
 
     progress_message = await message.reply("<code>Downloading media...</code>")
