@@ -8,3 +8,4 @@ gTTS
 Pillow
 python-dotenv
 yt-dlp
+aiohttp
