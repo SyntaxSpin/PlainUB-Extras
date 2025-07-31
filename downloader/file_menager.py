@@ -7,7 +7,6 @@ from pyrogram.types import Message
 
 from app import BOT, bot
 
-# Must point to the same directory as downloader.py
 UBOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DOWNLOADS_DIR = os.path.join(UBOT_DIR, "downloads/")
 os.makedirs(DOWNLOADS_DIR, exist_ok=True)
@@ -106,19 +105,25 @@ async def delete_handler(bot: BOT, message: Message):
 
     target = message.input.strip()
 
-    try:
-        if target.lower() == "all":
+    if target.lower() == "all":
+        try:
             shutil.rmtree(DOWNLOADS_DIR)
             os.makedirs(DOWNLOADS_DIR)
             await message.reply("✅ All files in downloads folder have been deleted.")
-        else:
-            file_path = os.path.join(DOWNLOADS_DIR, target)
-            if not os.path.exists(file_path) or not os.path.isfile(file_path):
-                await handle_error_and_cleanup(message, f"File <code>{html.escape(target)}</code> not found.")
-                return
-            os.remove(file_path)
-            await message.reply(f"✅ File <code>{html.escape(target)}</code> has been deleted.")
-        
+            await message.delete()
+        except Exception as e:
+            await handle_error_and_cleanup(message, f"<b>Error:</b> Could not clear downloads folder.\n<code>{html.escape(str(e))}</code>")
+        return
+
+    file_path = os.path.join(DOWNLOADS_DIR, target)
+
+    if not os.path.exists(file_path) or not os.path.isfile(file_path):
+        await handle_error_and_cleanup(message, f"File <code>{html.escape(target)}</code> not found.")
+        return
+
+    try:
+        os.remove(file_path)
+        await message.reply(f"✅ File <code>{html.escape(target)}</code> has been deleted.")
         await message.delete()
-    except Exception as e:
-        await handle_error_and_cleanup(message, f"<b>Error:</b> Could not perform delete operation.\n<code>{html.escape(str(e))}</code>")
+    except OSError as e:
+        await handle_error_and_cleanup(message, f"<b>OS Error:</b> Could not delete file.\n<code>{html.escape(str(e))}</code>")
