@@ -22,14 +22,6 @@ def format_bytes(size_bytes: int) -> str:
     s = round(size_bytes / p, 2)
     return f"{s} {size_name[i]}"
 
-def format_eta(seconds: int) -> str:
-    if seconds is None or seconds < 0: return "N/A"
-    seconds = int(seconds)
-    minutes, seconds = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    if hours > 0: return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-    return f"{minutes:02d}:{seconds:02d}"
-
 def parse_yt_dlp_size(size_str: str) -> int:
     cleaned_size_str = size_str.lstrip('~')
     match = re.match(r'([0-9.]+)\s*(\w+B)', cleaned_size_str, re.IGNORECASE)
@@ -124,35 +116,19 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
         if not downloaded_path:
             raise FileNotFoundError("yt-dlp finished but the output file was not found.")
 
+        await progress_message.edit_text(
+            f"<b>Uploading:</b> <code>{html.escape(os.path.basename(downloaded_path))}</code>\n\n"
+            f"<i>Please wait, this might take a while...</i>"
+        )
+        
         is_image = downloaded_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
         reply_params = ReplyParameters(message_id=original_message.id)
         caption = f"Downloaded: <code>{html.escape(display_filename)}</code>"
         
-        start_time = time.time()
-        last_update_time = 0
-        
-        async def upload_progress(current, total):
-            nonlocal last_update_time
-            if time.time() - last_update_time > 2:
-                percentage = current * 100 / total
-                speed = current / (time.time() - start_time) if (time.time() - start_time) > 0 else 0
-                eta = (total - current) / speed if speed > 0 else 0
-                bar = '█' * int(percentage // 10) + '░' * (10 - int(percentage // 10))
-                
-                text = (f"<b>Uploading:</b> <code>{html.escape(os.path.basename(downloaded_path))}</code>\n\n"
-                        f"<code>[{bar}] {percentage:.1f}%</code>\n"
-                        f"<b>Progress:</b> <code>{format_bytes(current)} / {format_bytes(total)}</code>\n"
-                        f"<b>Speed:</b> <code>{format_bytes(speed)}/s</code> | <b>ETA:</b> <code>{format_eta(eta)}</code>\n\n"
-                        f"<b>Job ID:</b> <code>{job_id}</code>")
-                
-                try: await progress_message.edit_text(text)
-                except: pass
-                last_update_time = time.time()
-        
         if is_image:
-            await bot.send_photo(chat_id=original_message.chat.id, photo=downloaded_path, caption=caption, reply_parameters=reply_params, progress=upload_progress)
+            await bot.send_photo(chat_id=original_message.chat.id, photo=downloaded_path, caption=caption, reply_parameters=reply_params)
         else:
-            await bot.send_video(chat_id=original_message.chat.id, video=downloaded_path, caption=caption, reply_parameters=reply_params, progress=upload_progress)
+            await bot.send_video(chat_id=original_message.chat.id, video=downloaded_path, caption=caption, reply_parameters=reply_params)
         
         await progress_message.delete(); await original_message.delete()
     except asyncio.CancelledError:
@@ -165,10 +141,10 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
 @bot.add_cmd(cmd=["media", "md"])
 async def media_dl_handler(bot: BOT, message: Message):
     if not message.input:
-        return await message.reply("Please provide a link to download.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.edit("Please provide a link to download.", del_in=ERROR_VISIBLE_DURATION)
     link = message.input.strip()
     job_id = int(time.time())
-    progress_message = await message.reply(f"<code>Starting media downloading job {job_id}...</code>")
+    progress_message = await message.reply(f"<code>Starting media job {job_id}...</code>")
     task = asyncio.create_task(media_downloader_task(link, progress_message, job_id, message))
     ACTIVE_MEDIA_JOBS[job_id] = {"task": task, "process": None}
     try: await task
@@ -178,7 +154,7 @@ async def media_dl_handler(bot: BOT, message: Message):
 
 @bot.add_cmd(cmd=["cancelmedia", "cancelmd"])
 async def cancel_media_handler(bot: BOT, message: Message):
-    if not message.input: return await message.reply("Please provide a Job ID to cancel.", del_in=ERROR_VISIBLE_DURATION)
+    if not message.input: return await message.edit("Please provide a Job ID to cancel.", del_in=ERROR_VISIBLE_DURATION)
     try:
         job_id = int(message.input.strip())
         if job_id in ACTIVE_MEDIA_JOBS:
@@ -187,5 +163,5 @@ async def cancel_media_handler(bot: BOT, message: Message):
                 except: pass
             ACTIVE_MEDIA_JOBS[job_id]["task"].cancel()
             await message.delete()
-        else: await message.reply(f"Job <code>{job_id}</code> not found or already completed.", del_in=ERROR_VISIBLE_DURATION)
-    except (ValueError, KeyError): await message.reply("Invalid Job ID.", del_in=ERROR_VISIBLE_DURATION)
+        else: await message.edit(f"Job <code>{job_id}</code> not found or already completed.", del_in=ERROR_VISIBLE_DURATION)
+    except (ValueError, KeyError): await message.edit("Invalid Job ID.", del_in=ERROR_VISIBLE_DURATION)
