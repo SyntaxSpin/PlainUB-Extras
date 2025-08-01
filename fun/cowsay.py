@@ -1,4 +1,4 @@
-from cowsay
+from cowsay import cow
 
 from app import BOT, Message, bot
 
