@@ -54,7 +54,9 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
         display_filename = title or "media"
 
         output_template = os.path.join(TEMP_DIR, f"'%(title).200s [%(id)s].%(ext)s'")
-        command = f'yt-dlp --progress --newline --extractor-args "generic:impersonate=chrome110" -o {output_template} "{link}"'
+        
+        # --- POPRAWKA: Usunięto problematyczną flagę `--extractor-args` ---
+        command = f'yt-dlp --progress --newline -o {output_template} "{link}"'
         
         process = await asyncio.create_subprocess_shell(
             command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
@@ -166,7 +168,7 @@ async def media_dl_handler(bot: BOT, message: Message):
         return await message.reply("Please provide a link to download.", del_in=ERROR_VISIBLE_DURATION)
     link = message.input.strip()
     job_id = int(time.time())
-    progress_message = await message.reply(f"<code>Starting downloading media job {job_id}...</code>")
+    progress_message = await message.reply(f"<code>Starting downloading media...</code>")
     task = asyncio.create_task(media_downloader_task(link, progress_message, job_id, message))
     ACTIVE_MEDIA_JOBS[job_id] = {"task": task, "process": None, "upload_task": None}
     try: await task
