@@ -106,7 +106,7 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
                 else: continue
 
             if time.time() - last_update > 2:
-                status_text += f"\n\n<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancelmd {job_id} to stop)</i>"
+                status_text += f"\n\n<b>Job ID:</b> <code>{job_id}</code>\n(Use <code>.cancel {job_id}</code> to stop)"
                 try: await progress_message.edit_text(status_text)
                 except: pass
                 last_update = time.time()
@@ -142,7 +142,7 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
                         f"<code>[{bar}] {percentage:.1f}%</code>\n"
                         f"<b>Progress:</b> <code>{format_bytes(current)} / {format_bytes(total)}</code>\n"
                         f"<b>Speed:</b> <code>{format_bytes(speed)}/s</code> | <b>ETA:</b> <code>{format_eta(eta)}</code>\n\n"
-                        f"<b>Job ID:</b> <code>{job_id}</code>")
+                        f"<b>Job ID:</b> <code>{job_id}</code>\n(Use <code>.cancel {job_id}</code> to stop)")
                 try: await progress_message.edit_text(text)
                 except: pass
                 last_update_time = time.time()
@@ -175,7 +175,7 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
 @bot.add_cmd(cmd=["media", "md"])
 async def media_dl_handler(bot: BOT, message: Message):
     if not message.input:
-        return await message.edit("Please provide a link to download.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Please provide a link to download.", del_in=ERROR_VISIBLE_DURATION)
     link = message.input.strip()
     job_id = int(time.time())
     progress_message = await message.reply(f"<code>Starting media job {job_id}...</code>")
@@ -188,7 +188,7 @@ async def media_dl_handler(bot: BOT, message: Message):
 
 @bot.add_cmd(cmd="cancel")
 async def cancel_media_handler(bot: BOT, message: Message):
-    if not message.input: return await message.edit("Please provide a Job ID to cancel.", del_in=ERROR_VISIBLE_DURATION)
+    if not message.input: return await message.reply("Please provide a Job ID to cancel.", del_in=ERROR_VISIBLE_DURATION)
     try:
         job_id = int(message.input.strip())
         if job_id in ACTIVE_MEDIA_JOBS:
@@ -200,5 +200,5 @@ async def cancel_media_handler(bot: BOT, message: Message):
                 upload_task.cancel()
             job["task"].cancel()
             await message.delete()
-        else: await message.edit(f"Job <code>{job_id}</code> not found or already completed.", del_in=ERROR_VISIBLE_DURATION)
-    except (ValueError, KeyError): await message.edit("Invalid Job ID.", del_in=ERROR_VISIBLE_DURATION)
+        else: await message.reply(f"Job <code>{job_id}</code> not found or already completed.", del_in=ERROR_VISIBLE_DURATION)
+    except (ValueError, KeyError): await message.reply("Invalid Job ID.", del_in=ERROR_VISIBLE_DURATION)
