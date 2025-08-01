@@ -1,6 +1,7 @@
 import os
 import html
 import asyncio
+import traceback
 import re
 import shutil
 import time
@@ -55,8 +56,10 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
 
         filename_template = f"'%(title).200s.%(ext)s'"
         safe_filename, stderr, ret_code = await run_command(f'yt-dlp --get-filename -o {filename_template} "{link}"')
-        if ret_code != 0:
-            raise RuntimeError(f"Could not get safe filename: {stderr}")
+        
+        safe_filename = safe_filename.strip().replace('\n', '').replace('\r', '')
+        if not safe_filename:
+            raise ValueError("Empty safe_filename generated. Cannot continue.")
 
         output_path = os.path.join(TEMP_DIR, safe_filename)
         
@@ -168,8 +171,9 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
         await progress_message.delete(); await original_message.delete()
     except asyncio.CancelledError:
         await progress_message.edit(f"<b>Job <code>{job_id}</code> cancelled.</b>", del_in=ERROR_VISIBLE_DURATION)
-    except Exception as e:
-        await progress_message.edit(f"<b>Critical Error in job <code>{job_id}</code>:</b>\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
+    except Exception:
+        tb = traceback.format_exc()
+        await progress_message.edit(f"<b>Critical Error in job <code>{job_id}</code>:</b>\n<code>{html.escape(tb)}</code>", del_in=ERROR_VISIBLE_DURATION)
     finally:
         shutil.rmtree(TEMP_DIR, ignore_errors=True); os.makedirs(TEMP_DIR, exist_ok=True)
 
@@ -198,7 +202,8 @@ async def cancel_media_handler(bot: BOT, message: Message):
                 try: process.kill()
                 except: pass
             if upload_task := job.get("upload_task"):
-                upload_task.cancel()
+                if not upload_task.done():
+                    upload_task.cancel()
             job["task"].cancel()
             await message.delete()
         else: await message.reply(f"Job <code>{job_id}</code> not found or already completed.", del_in=ERROR_VISIBLE_DURATION)
