@@ -166,6 +166,13 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
 
 @bot.add_cmd(cmd=["media", "md"])
 async def media_dl_handler(bot: BOT, message: Message):
+    """
+    CMD: MEDIA / MD
+    INFO: Downloads media from various platforms (e.g., YouTube, TikTok).
+    USAGE:
+        .media [link]
+        .media -m [link]  (Shows a detailed progress bar)
+    """
     if not message.input:
         return await message.reply("Usage: `.media [-m] [link]`", del_in=ERROR_VISIBLE_DURATION)
 
@@ -187,6 +194,12 @@ async def media_dl_handler(bot: BOT, message: Message):
 
 @bot.add_cmd(cmd="cancel")
 async def cancel_media_handler(bot: BOT, message: Message):
+    """
+    CMD: CANCEL
+    INFO: Cancels an active media download or upload job.
+    USAGE:
+        .cancel [Job ID]
+    """
     if not message.input: return await message.reply("Please provide a Job ID.", del_in=ERROR_VISIBLE_DURATION)
     try:
         job_id = int(message.input.strip())
