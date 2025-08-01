@@ -53,9 +53,14 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
         title, _, _ = await run_command(f'yt-dlp --get-title "{link}"')
         display_filename = title or "media"
 
-        base_filename = str(job_id)
-        output_template = f"{TEMP_DIR}{base_filename}.%(ext)s"
-        command = f'yt-dlp --progress --newline --extractor-args "generic:impersonate=chrome110" -f "bv*+ba/b" --merge-output-format mp4 -o "{output_template}" "{link}"'
+        filename_template = f"'%(title).200s.%(ext)s'"
+        safe_filename, stderr, ret_code = await run_command(f'yt-dlp --get-filename -o {filename_template} "{link}"')
+        if ret_code != 0:
+            raise RuntimeError(f"Could not get safe filename: {stderr}")
+
+        output_path = os.path.join(TEMP_DIR, safe_filename)
+        
+        command = f'yt-dlp --progress --newline --extractor-args "generic:impersonate=chrome110" -f "bv*+ba/b" --merge-output-format mp4 -o "{output_path}" "{link}"'
         
         process = await asyncio.create_subprocess_shell(
             command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
@@ -84,7 +89,6 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
             
             line_text = line.decode('utf-8', 'replace').strip()
             output_lines.append(line_text)
-
             status_text = f"<b>Downloading:</b> <code>{html.escape(display_filename)}</code>\n\n"
             
             if "[Merger]" in line_text:
@@ -103,7 +107,8 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
                     status_text += (f"<code>[{bar}] {percentage:.1f}%</code>\n"
                                     f"<b>Progress:</b> <code>{format_bytes(current_bytes)} / {total_size_str}</code>\n"
                                     f"<b>Speed:</b> <code>{speed_str}</code> | <b>ETA:</b> <code>{eta_str}</code>")
-                else: continue
+                else:
+                    continue
 
             if time.time() - last_update > 2:
                 status_text += f"\n\n<b>Job ID:</b> <code>{job_id}</code>\n(Use <code>.cancel {job_id}</code> to stop)"
@@ -115,13 +120,9 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
         if process.returncode != 0:
             raise RuntimeError(f"Process failed:\n{html.escape('\n'.join(output_lines[-5:]))}")
         
-        downloaded_path = None
-        for file in os.listdir(TEMP_DIR):
-            if file.startswith(base_filename):
-                downloaded_path = os.path.join(TEMP_DIR, file)
-                break
-        if not downloaded_path:
+        if not os.path.exists(output_path):
             raise FileNotFoundError("yt-dlp finished but the output file was not found.")
+        downloaded_path = output_path
 
         is_image = downloaded_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
         reply_params = ReplyParameters(message_id=original_message.id)
@@ -178,7 +179,7 @@ async def media_dl_handler(bot: BOT, message: Message):
         return await message.reply("Please provide a link to download.", del_in=ERROR_VISIBLE_DURATION)
     link = message.input.strip()
     job_id = int(time.time())
-    progress_message = await message.reply(f"<code>Starting media job {job_id}...</code>")
+    progress_message = await message.reply(f"<code>Starting downloading media job {job_id}...</code>")
     task = asyncio.create_task(media_downloader_task(link, progress_message, job_id, message))
     ACTIVE_MEDIA_JOBS[job_id] = {"task": task, "process": None, "upload_task": None}
     try: await task
