@@ -12,4 +12,6 @@ async def ascii(bot: BOT, message: Message):
 
     ascii_text = pyfiglet.figlet_format(text)
 
-    await message.reply(f"```{ascii_text}```")
+    await message.reply(f"```
+    {ascii_text}
+    ```")
