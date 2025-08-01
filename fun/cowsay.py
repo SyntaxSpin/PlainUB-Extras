@@ -22,4 +22,4 @@ async def cowsay(bot: BOT, message: Message):
     if cow_said.endswith('\n'):
         cow_said = cow_said[:-1]
 
-    await message.reply(f"```\n{cow_said}\n```")
+    await message.reply(f"```{cow_said}```")
