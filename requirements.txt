@@ -7,4 +7,3 @@ pyfiglet
 gTTS
 Pillow
 python-dotenv
-yt-dlp
