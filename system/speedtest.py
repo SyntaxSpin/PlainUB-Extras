@@ -30,7 +30,7 @@ async def speedtest_handler(bot: BOT, message: Message):
     USAGE: .speedtest
     """
     
-    progress_message = await message.reply("<code>Running speedtest... This may take a moment...</code>")
+    progress_message = await message.reply("<code>Running speedtest...</code>")
     
     command = "speedtest-cli --simple"
     
