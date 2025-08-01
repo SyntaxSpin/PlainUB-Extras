@@ -1,4 +1,6 @@
+import html
 import pyfiglet
+from pyrogram.enums import ParseMode
 
 from app import BOT, Message, bot
 
@@ -12,4 +14,6 @@ async def ascii(bot: BOT, message: Message):
 
     ascii_text = pyfiglet.figlet_format(text)
 
-    await message.reply(f"```\n\n{ascii_text}\n\n```")
+    escaped_ascii_text = html.escape(ascii_text)
+    
+    await message.reply(f"<code>{escaped_ascii_text}</code>", parse_mode=ParseMode.HTML)
