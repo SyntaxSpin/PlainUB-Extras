@@ -109,7 +109,7 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
                     continue
 
             if time.time() - last_update > 2:
-                status_text += f"\n\n<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancelmd {job_id} to stop)</i>"
+                status_text += f"\n\n<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancel {job_id} to stop)</i>"
                 try: await progress_message.edit_text(status_text)
                 except: pass
                 last_update = time.time()
@@ -171,7 +171,7 @@ async def media_dl_handler(bot: BOT, message: Message):
         return await message.reply("Please provide a link to download.", del_in=ERROR_VISIBLE_DURATION)
     link = message.input.strip()
     job_id = int(time.time())
-    progress_message = await message.reply(f"<code>Starting media job {job_id}...</code>")
+    progress_message = await message.reply(f"<code>Starting downloading media job {job_id}...</code>")
     task = asyncio.create_task(media_downloader_task(link, progress_message, job_id, message))
     ACTIVE_MEDIA_JOBS[job_id] = {"task": task, "process": None}
     try: await task
@@ -179,7 +179,7 @@ async def media_dl_handler(bot: BOT, message: Message):
         if job_id in ACTIVE_MEDIA_JOBS:
             del ACTIVE_MEDIA_JOBS[job_id]
 
-@bot.add_cmd(cmd=["cancelmedia", "cancelmd"])
+@bot.add_cmd(cmd="cancel")
 async def cancel_media_handler(bot: BOT, message: Message):
     if not message.input: return await message.reply("Please provide a Job ID to cancel.", del_in=ERROR_VISIBLE_DURATION)
     try:
