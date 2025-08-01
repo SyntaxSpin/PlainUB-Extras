@@ -1,3 +1,5 @@
+import io
+import contextlib
 from cowsay import cow
 
 from app import BOT, Message, bot
@@ -10,6 +12,14 @@ async def cowsay(bot: BOT, message: Message):
         await message.reply("What is the cow supposed to say?")
         return
 
-    cow_said = cow(text)
+    string_io = io.StringIO()
+    
+    with contextlib.redirect_stdout(string_io):
+        cow(text)
+    
+    cow_said = string_io.getvalue()
+
+    if cow_said.endswith('\n'):
+        cow_said = cow_said[:-1]
 
     await message.reply(f"```\n{cow_said}\n```")
