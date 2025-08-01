@@ -31,4 +31,4 @@ async def cowsay(bot: BOT, message: Message):
 
     escaped_cow_text = html.escape(cow_said)
     
-    await message.reply(f"<pre language=cowsay>Input: {text}\n\n{escaped_cow_text}</pre>", parse_mode=ParseMode.HTML)
+    await message.reply(f"<pre language=cowsay>~$ cowsay {text}\n\n{escaped_cow_text}</pre>", parse_mode=ParseMode.HTML)
