@@ -12,7 +12,7 @@ from app import BOT, bot
 
 logging.getLogger("pyrogram.session.session").setLevel(logging.ERROR)
 
-TEMP_DIR = "temp_media_dl/"
+TEMP_DIR = "temp_media/"
 os.makedirs(TEMP_DIR, exist_ok=True)
 ERROR_VISIBLE_DURATION = 10
 ACTIVE_MEDIA_JOBS = {}
