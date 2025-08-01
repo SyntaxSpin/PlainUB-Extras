@@ -3,9 +3,9 @@ import html
 import asyncio
 import re
 import shutil
-import logging
 import time
 import math
+import logging
 from pyrogram.types import Message, ReplyParameters
 
 from app import BOT, bot
@@ -79,7 +79,7 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
             except asyncio.TimeoutError:
                 if process.returncode is not None: break
                 else: continue
-
+            
             if not line: break
             
             line_text = line.decode('utf-8', 'replace').strip()
@@ -97,19 +97,16 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
                     total_size_str = match.group(2)
                     speed_str = match.group(3) if match.group(3) else "N/A"
                     eta_str = match.group(4) if match.group(4) else "N/A"
-                    
                     total_bytes = parse_yt_dlp_size(total_size_str)
                     current_bytes = int((total_bytes * percentage) / 100)
-                    
                     bar = '█' * int(percentage // 10) + '░' * (10 - int(percentage // 10))
                     status_text += (f"<code>[{bar}] {percentage:.1f}%</code>\n"
                                     f"<b>Progress:</b> <code>{format_bytes(current_bytes)} / {total_size_str}</code>\n"
                                     f"<b>Speed:</b> <code>{speed_str}</code> | <b>ETA:</b> <code>{eta_str}</code>")
-                else:
-                    continue
+                else: continue
 
             if time.time() - last_update > 2:
-                status_text += f"\n\n<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancel {job_id} to stop)</i>"
+                status_text += f"\n\n<b>Job ID:</b> <code>{job_id}</code>\n<i>(Use .cancelmd {job_id} to stop)</i>"
                 try: await progress_message.edit_text(status_text)
                 except: pass
                 last_update = time.time()
@@ -141,21 +138,31 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
                 speed = current / elapsed_time if elapsed_time > 0 else 0
                 eta = (total - current) / speed if speed > 0 else 0
                 bar = '█' * int(percentage // 10) + '░' * (10 - int(percentage // 10))
-                
                 text = (f"<b>Uploading:</b> <code>{html.escape(os.path.basename(downloaded_path))}</code>\n\n"
                         f"<code>[{bar}] {percentage:.1f}%</code>\n"
                         f"<b>Progress:</b> <code>{format_bytes(current)} / {format_bytes(total)}</code>\n"
                         f"<b>Speed:</b> <code>{format_bytes(speed)}/s</code> | <b>ETA:</b> <code>{format_eta(eta)}</code>\n\n"
                         f"<b>Job ID:</b> <code>{job_id}</code>")
-                
                 try: await progress_message.edit_text(text)
                 except: pass
                 last_update_time = time.time()
+            return True
         
-        if is_image:
-            await bot.send_photo(chat_id=original_message.chat.id, photo=downloaded_path, caption=caption, reply_parameters=reply_params, progress=upload_progress)
-        else:
-            await bot.send_video(chat_id=original_message.chat.id, video=downloaded_path, caption=caption, reply_parameters=reply_params, progress=upload_progress)
+        upload_task = None
+        try:
+            if is_image:
+                upload_task = asyncio.create_task(
+                    bot.send_photo(chat_id=original_message.chat.id, photo=downloaded_path, caption=caption, reply_parameters=reply_params, progress=upload_progress)
+                )
+            else:
+                upload_task = asyncio.create_task(
+                    bot.send_video(chat_id=original_message.chat.id, video=downloaded_path, caption=caption, reply_parameters=reply_params, progress=upload_progress)
+                )
+            ACTIVE_MEDIA_JOBS[job_id]["upload_task"] = upload_task
+            await upload_task
+        finally:
+            if "upload_task" in ACTIVE_MEDIA_JOBS.get(job_id, {}):
+                del ACTIVE_MEDIA_JOBS[job_id]["upload_task"]
         
         await progress_message.delete(); await original_message.delete()
     except asyncio.CancelledError:
@@ -168,12 +175,12 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
 @bot.add_cmd(cmd=["media", "md"])
 async def media_dl_handler(bot: BOT, message: Message):
     if not message.input:
-        return await message.reply("Please provide a link to download.", del_in=ERROR_VISIBLE_DURATION)
+        return await message.edit("Please provide a link to download.", del_in=ERROR_VISIBLE_DURATION)
     link = message.input.strip()
     job_id = int(time.time())
-    progress_message = await message.reply(f"<code>Starting downloading media job {job_id}...</code>")
+    progress_message = await message.reply(f"<code>Starting media job {job_id}...</code>")
     task = asyncio.create_task(media_downloader_task(link, progress_message, job_id, message))
-    ACTIVE_MEDIA_JOBS[job_id] = {"task": task, "process": None}
+    ACTIVE_MEDIA_JOBS[job_id] = {"task": task, "process": None, "upload_task": None}
     try: await task
     finally:
         if job_id in ACTIVE_MEDIA_JOBS:
@@ -181,14 +188,17 @@ async def media_dl_handler(bot: BOT, message: Message):
 
 @bot.add_cmd(cmd="cancel")
 async def cancel_media_handler(bot: BOT, message: Message):
-    if not message.input: return await message.reply("Please provide a Job ID to cancel.", del_in=ERROR_VISIBLE_DURATION)
+    if not message.input: return await message.edit("Please provide a Job ID to cancel.", del_in=ERROR_VISIBLE_DURATION)
     try:
         job_id = int(message.input.strip())
         if job_id in ACTIVE_MEDIA_JOBS:
-            if process := ACTIVE_MEDIA_JOBS[job_id].get("process"):
+            job = ACTIVE_MEDIA_JOBS[job_id]
+            if process := job.get("process"):
                 try: process.kill()
                 except: pass
-            ACTIVE_MEDIA_JOBS[job_id]["task"].cancel()
+            if upload_task := job.get("upload_task"):
+                upload_task.cancel()
+            job["task"].cancel()
             await message.delete()
-        else: await message.reply(f"Job <code>{job_id}</code> not found or already completed.", del_in=ERROR_VISIBLE_DURATION)
-    except (ValueError, KeyError): await message.reply("Invalid Job ID.", del_in=ERROR_VISIBLE_DURATION)
+        else: await message.edit(f"Job <code>{job_id}</code> not found or already completed.", del_in=ERROR_VISIBLE_DURATION)
+    except (ValueError, KeyError): await message.edit("Invalid Job ID.", del_in=ERROR_VISIBLE_DURATION)
