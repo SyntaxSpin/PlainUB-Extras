@@ -1,19 +1,26 @@
 import io
 import contextlib
+import html
 from cowsay import cow
+from pyrogram.enums import ParseMode
 
 from app import BOT, Message, bot
 
 
 @bot.add_cmd(cmd="cowsay")
 async def cowsay(bot: BOT, message: Message):
+    """
+    CMD: COWSAY
+    INFO: Makes a cow say something.
+    USAGE:
+        .cowsay [text]
+    """
     text = message.input
     if not text:
         await message.reply("What is the cow supposed to say?")
         return
 
     string_io = io.StringIO()
-    
     with contextlib.redirect_stdout(string_io):
         cow(text)
     
@@ -22,4 +29,6 @@ async def cowsay(bot: BOT, message: Message):
     if cow_said.endswith('\n'):
         cow_said = cow_said[:-1]
 
-    await message.reply(f"```\n\n{cow_said}\n\n```")
+    escaped_cow_text = html.escape(cow_said)
+    
+    await message.reply(f"<code>{escaped_cow_text}</code>", parse_mode=ParseMode.HTML)
