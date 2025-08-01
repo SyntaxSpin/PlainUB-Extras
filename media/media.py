@@ -3,11 +3,14 @@ import html
 import asyncio
 import re
 import shutil
+import logging
 import time
 import math
 from pyrogram.types import Message, ReplyParameters
 
 from app import BOT, bot
+
+logging.getLogger("pyrogram.session.session").setLevel(logging.ERROR)
 
 TEMP_DIR = "temp_media_dl/"
 os.makedirs(TEMP_DIR, exist_ok=True)
