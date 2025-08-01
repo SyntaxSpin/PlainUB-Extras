@@ -16,6 +16,7 @@ TEMP_DIR = "temp_media/"
 os.makedirs(TEMP_DIR, exist_ok=True)
 ERROR_VISIBLE_DURATION = 10
 ACTIVE_MEDIA_JOBS = {}
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
 
 def format_bytes(size_bytes: int) -> str:
     if size_bytes <= 0: return "0 B"
@@ -55,11 +56,12 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
     try:
         cleaned_link = _clean_link(link)
 
-        title, _, _ = await run_command(f'yt-dlp --get-title "{cleaned_link}"')
+        title, _, _ = await run_command(f'yt-dlp --user-agent "{USER_AGENT}" --get-title "{cleaned_link}"')
         display_filename = title or "media"
 
         output_template = os.path.join(TEMP_DIR, f"'%(title).200s [%(id)s].%(ext)s'")
-        command = f'yt-dlp --progress --newline -o {output_template} "{cleaned_link}"'
+        
+        command = f'yt-dlp --user-agent "{USER_AGENT}" --progress --newline -o {output_template} "{cleaned_link}"'
         
         process = await asyncio.create_subprocess_shell(
             command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
