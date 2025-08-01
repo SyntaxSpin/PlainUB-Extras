@@ -52,9 +52,9 @@ async def sync_change_volume(input_path: str, volume_factor: float) -> str:
 async def volume_handler(bot: BOT, message: Message):
     """
     CMD: VOLUME / VOL
-    INFO: Changes the volume of the replied video/audio file based on percentage.
+    INFO: Changes the volume of the replied media file. 100 is the original volume.
     USAGE:
-        .volume [level] (e.g., .volume 200, .volume 50)
+        .volume [level] (e.g., .volume 200 for 2x volume, .volume 50 for half volume)
     """
     replied_msg = message.replied
     is_media = replied_msg and (
@@ -65,14 +65,14 @@ async def volume_handler(bot: BOT, message: Message):
         return await message.reply("Please reply to a video or audio file.", del_in=ERROR_VISIBLE_DURATION)
 
     if not message.input:
-        return await message.reply("Please specify a volume percentage (100 = original). Usage: `.volume 150`", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("Please specify a volume level (100 = original). Usage: `.volume 150`", del_in=ERROR_VISIBLE_DURATION)
 
     try:
-        volume_percent = float(message.input.strip())
-        if volume_percent < 0:
-            raise ValueError("Volume percentage cannot be negative.")
+        volume_level = float(message.input.strip())
+        if volume_level < 0:
+            raise ValueError("Volume level cannot be negative.")
         
-        volume_factor = volume_percent / 100.0
+        volume_factor = volume_level / 100.0
     except ValueError:
         return await message.reply("Invalid input. Please use a number like `200` or `50`.", del_in=ERROR_VISIBLE_DURATION)
 
@@ -85,14 +85,14 @@ async def volume_handler(bot: BOT, message: Message):
         original_path = await bot.download_media(media_object)
         temp_files.append(original_path)
         
-        await progress_message.edit(f"<code>Changing volume to {volume_percent}%...</code>")
+        await progress_message.edit(f"<code>Changing volume to level {int(volume_level)}...</code>")
         
         modified_path = await sync_change_volume(original_path, volume_factor)
         temp_files.append(modified_path)
         
         await progress_message.edit("<code>Sending media...</code>")
 
-        caption = f"Volume set to: `{int(volume_percent)}%`"
+        caption = f"Volume set to: `{int(volume_level)}`"
         reply_params = ReplyParameters(message_id=replied_msg.id)
 
         is_video = replied_msg.video or (replied_msg.document and replied_msg.document.mime_type.startswith('video/'))
