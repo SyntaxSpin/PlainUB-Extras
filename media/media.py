@@ -142,14 +142,29 @@ async def media_downloader_task(link: str, progress_message: Message, job_id: in
         is_image = downloaded_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
         reply_params = ReplyParameters(message_id=original_message.id)
         caption = f"Downloaded: <code>{html.escape(display_filename)}</code>"
-        
+
         upload_task = None
         try:
-            send_method = bot.send_photo if is_image else bot.send_video
-            upload_task = asyncio.create_task(
-                send_method(chat_id=original_message.chat.id, photo=downloaded_path if is_image else None, video=downloaded_path if not is_image else None,
-                            caption=caption, reply_parameters=reply_params, progress=upload_progress_callback)
-            )
+            if is_image:
+                upload_task = asyncio.create_task(
+                    bot.send_photo(
+                        chat_id=original_message.chat.id,
+                        photo=downloaded_path,
+                        caption=caption,
+                        reply_parameters=reply_params,
+                        progress=upload_progress_callback
+                    )
+                )
+            else:
+                upload_task = asyncio.create_task(
+                    bot.send_video(
+                        chat_id=original_message.chat.id,
+                        video=downloaded_path,
+                        caption=caption,
+                        reply_parameters=reply_params,
+                        progress=upload_progress_callback
+                    )
+                )
             ACTIVE_MEDIA_JOBS[job_id]["upload_task"] = upload_task
             await upload_task
         finally:
