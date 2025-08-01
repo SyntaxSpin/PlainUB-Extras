@@ -10,6 +10,6 @@ async def cowsay(bot: BOT, message: Message):
         await message.reply("What is the cow supposed to say?")
         return
 
-    cow_said = cow.Cowacter().milk(text)
+    cow_said = Cowacter().milk(text)
 
     await message.reply(f"```\n{cow_said}\n```")
