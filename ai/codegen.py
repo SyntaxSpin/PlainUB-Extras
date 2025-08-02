@@ -49,7 +49,7 @@ async def codegen_handler(bot: BOT, message: Message):
     language = parts[0].lower()
     prompt = parts[1]
 
-    progress_message = await message.reply("<code>Generating code with Code Llama...</code>")
+    progress_message = await message.reply("<code>Generating...</code>")
 
     try:
         api_url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/ai/run/@hf/thebloke/codellama-7b-instruct-awq"
@@ -76,7 +76,7 @@ async def codegen_handler(bot: BOT, message: Message):
                 except IndexError:
                     pass
 
-            final_output = f'<pre class="language-{language}">{html.escape(code_block.strip())}</pre>'
+            final_output = f'<b>Promt:</b> {prompt}\n\n<pre class="language-{language}">{html.escape(code_block.strip())}</pre>'
             
             await bot.send_message(
                 chat_id=message.chat.id,
