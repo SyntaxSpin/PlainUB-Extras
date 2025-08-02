@@ -76,7 +76,7 @@ async def codegen_handler(bot: BOT, message: Message):
                 except IndexError:
                     pass
 
-            final_output = f'<b>Promt:</b> {prompt}\n\n<pre class="language-{language}">{html.escape(code_block.strip())}</pre>'
+            final_output = f'<b>Promt:</b> <i>{prompt}</i>\n\n<pre class="language-{language}">{html.escape(code_block.strip())}</pre>'
             
             await bot.send_message(
                 chat_id=message.chat.id,
