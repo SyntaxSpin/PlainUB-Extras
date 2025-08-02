@@ -58,7 +58,7 @@ async def ask_handler(bot: BOT, message: Message):
             
             final_output = (
                 f"<b>Prompt:</b> <i>{html.escape(display_prompt)}</i>\n\n"
-                f"<pre language=response>{html.escape(ai_response)}</pre>"
+                f"<pre language=llama3>{html.escape(ai_response)}</pre>"
             )
             
             # We send the message, but if it's still too long, Telegram will raise an error.
