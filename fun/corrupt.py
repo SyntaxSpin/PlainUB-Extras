@@ -18,30 +18,26 @@ def corrupt_file_sync(input_path: str) -> str:
     try:
         with open(output_path, "rb+") as f:
             file_size = os.path.getsize(output_path)
-            if file_size < 20:
+            if file_size < 100:
                 return output_path
-
-            min_pos = int(file_size * 0.1)
+            start_pos = int(file_size * 0.1)
             
-            if file_size < 1024:
-                corruption_count = 3
-                chunk_size = 10
-            else:
-                corruption_count = random.randint(5, 25)
-                chunk_size = random.randint(100, 1024)
-
-            for _ in range(corruption_count):
-                if file_size > min_pos + chunk_size + 1:
-                    random_position = random.randint(min_pos, file_size - chunk_size - 1)
-                    f.seek(random_position)
-                    random_data = os.urandom(chunk_size)
-                    f.write(random_data)
+            corruption_size = int(file_size * 0.8)
+            
+            f.seek(start_pos)
+            
+            chunk_size = 8192
+            written_bytes = 0
+            while written_bytes < corruption_size:
+                bytes_to_write = min(chunk_size, corruption_size - written_bytes)
+                random_data = os.urandom(bytes_to_write)
+                f.write(random_data)
+                written_bytes += bytes_to_write
                     
     except Exception as e:
         raise IOError(f"Failed to corrupt file: {e}")
         
     return output_path
-
 
 @bot.add_cmd(cmd="corrupt")
 async def corrupt_handler(bot: BOT, message: Message):
