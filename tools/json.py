@@ -46,7 +46,6 @@ async def dev_handler(bot: BOT, message: Message):
     progress_message = await message.reply("<code>Serializing message object to JSON...</code>")
     
     try:
-        # Convert the entire message object to a clean, indented JSON string
         message_data_str = json.dumps(
             target_message,
             indent=4,
@@ -54,13 +53,11 @@ async def dev_handler(bot: BOT, message: Message):
             ensure_ascii=False
         )
         
-        # Prepare the data to be sent as a file in-memory
         with io.BytesIO(message_data_str.encode('utf-8')) as doc:
             doc.name = f"message_data_{target_message.id}.json"
             
             await progress_message.edit("<code>Sending data file...</code>")
             
-            # Send the JSON file as a reply to the target message
             await bot.send_document(
                 chat_id=message.chat.id,
                 document=doc,
@@ -68,7 +65,6 @@ async def dev_handler(bot: BOT, message: Message):
                 reply_parameters=ReplyParameters(message_id=target_message.id)
             )
         
-        # Final cleanup
         await progress_message.delete()
         await message.delete()
 
