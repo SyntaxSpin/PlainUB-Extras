@@ -9,7 +9,7 @@ from pyrogram.types import Message
 from app import BOT, bot
 
 API_URL = "https://shot.screenshotapi.net/screenshot"
-SCRIPT_DIR = os.path.dirname(os.path.abspath(file))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODULES_DIR = os.path.dirname(SCRIPT_DIR)
 ENV_PATH = os.path.join(MODULES_DIR, "extra_config.env")
 load_dotenv(dotenv_path=ENV_PATH)
