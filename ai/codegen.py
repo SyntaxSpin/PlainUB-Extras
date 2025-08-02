@@ -80,7 +80,7 @@ async def codegen_handler(bot: BOT, message: Message):
         api_url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/ai/run/@hf/thebloke/codellama-7b-instruct-awq"
         headers = {"Authorization": f"Bearer {CF_API_TOKEN}"}
         
-        full_prompt = f"In {language}, write a code snippet that does the following: {prompt}. Only output the raw code, without any explanation or markdown formatting."
+        full_prompt = f"In {language}, write a professional code that does the following: {prompt}. Only output the raw code, without any explanation or markdown formatting."
         payload = {"prompt": full_prompt}
         
         response = await asyncio.to_thread(requests.post, api_url, headers=headers, json=payload, timeout=180)
