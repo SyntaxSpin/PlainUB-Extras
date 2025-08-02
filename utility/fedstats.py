@@ -36,16 +36,12 @@ async def find_latest_file_in_history(bot: BOT, chat_id: int, timeout: int = 15)
     """
     start_time = datetime.now(timezone.utc)
     while (datetime.now(timezone.utc) - start_time).total_seconds() < timeout:
-        # Get the very last message from the chat history
         try:
             async for message in bot.get_chat_history(chat_id, limit=1):
-                # Check if this message is a document and was sent after we started waiting
                 if message.document and message.date > start_time:
                     return message
         except Exception:
-            # Ignore potential errors during history fetching and try again
             pass
-        # Wait a little before checking again
         await asyncio.sleep(0.5)
     return None
 
@@ -66,7 +62,6 @@ async def query_single_bot(bot: BOT, bot_id: int, user_to_check: User) -> tuple[
             except Exception:
                 pass
             
-            # Use the new, robust history polling method
             file_message = await find_latest_file_in_history(bot, bot_id)
             
             if file_message:
