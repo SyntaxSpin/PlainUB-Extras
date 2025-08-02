@@ -12,17 +12,15 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 
 def corrupt_file_sync(input_path: str) -> str:
     base, ext = os.path.splitext(os.path.basename(input_path))
-    output_path = os.path.join(TEMP_DIR, f"{base}c{ext}")
-    shutil.copy(input_path, output_path)
     
     try:
-        with open(output_path, "rb+") as f:
-            file_size = os.path.getsize(output_path)
+        with open(input_path, "rb+") as f:
+            file_size = os.path.getsize(input_path)
             
             header_size = 512
             
             if file_size <= header_size:
-                return output_path
+                return input_path
             f.seek(header_size)
             
             bytes_to_destroy = file_size - header_size
@@ -38,7 +36,7 @@ def corrupt_file_sync(input_path: str) -> str:
     except Exception as e:
         raise IOError(f"Failed to corrupt file: {e}")
         
-    return output_path
+    return input_path
 
 @bot.add_cmd(cmd="corrupt")
 async def corrupt_handler(bot: BOT, message: Message):
