@@ -96,7 +96,6 @@ async def scan_file(api_key: str, message: Message):
             if f and os.path.exists(f): os.remove(f)
 
 async def scan_url(api_key: str, message: Message):
-    # This now sends a new progress message and edits it, then deletes the original command.
     progress = await message.reply("<code>Querying URL...</code>")
     try:
         target_url = message.input
@@ -116,7 +115,6 @@ async def scan_url(api_key: str, message: Message):
         await progress.edit(f"<b>Error:</b> <code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
 
 async def scan_domain_or_ip(api_key: str, message: Message, scan_type: str):
-    # This now sends a new progress message and edits it, then deletes the original command.
     progress = await message.reply(f"<code>Querying {scan_type.capitalize()}...</code>")
     try:
         resource = message.input
@@ -127,6 +125,6 @@ async def scan_domain_or_ip(api_key: str, message: Message, scan_type: str):
         elif response.status_code == 404: final_report = f"<b>Report:</b>\n<b>  - Status:</b> ⚪ {scan_type.capitalize()} not found."
         else: final_report = f"<b>Report:</b>\n<b>  - Error:</b> API code {response.status_code}."
         await progress.edit(final_report, link_preview_options=LinkPreviewOptions(is_disabled=True))
-        await message.delete() # Delete the original command
+        await message.delete()
     except Exception as e:
         await progress.edit(f"<b>Error:</b> <code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
