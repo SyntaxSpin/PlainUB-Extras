@@ -87,7 +87,7 @@ async def enhance_handler(bot: BOT, message: Message):
         
         if is_image:
             modified_path, new_width, new_height = await asyncio.to_thread(sync_enhance_image, original_path)
-        else: # is_video
+        else:
             modified_path, new_width, new_height = await sync_enhance_video(original_path)
         
         temp_files.append(modified_path)
