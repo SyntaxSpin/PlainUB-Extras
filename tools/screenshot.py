@@ -37,7 +37,7 @@ async def screenshot_handler(bot: BOT, message: Message):
     if not url.startswith(("http://", "https://")):
         url = "http://" + url
 
-    progress_msg = await message.reply(f"<code>Taking screenshot...")
+    progress_msg = await message.reply(f"<code>Taking screenshot...</code>")
 
     params = {
         "token": SCREENSHOT_API_KEY,
