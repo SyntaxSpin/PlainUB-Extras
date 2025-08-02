@@ -5,6 +5,7 @@ import requests
 import time
 from urllib.parse import urlparse
 from pyrogram.types import Message
+from dotenv import load_dotenv
 
 from app import BOT, bot
 
