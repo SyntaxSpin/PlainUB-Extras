@@ -83,7 +83,7 @@ async def crop_handler(bot: BOT, message: Message):
         
         if is_image:
             modified_path = await asyncio.to_thread(sync_crop_image, original_path, crop_width, crop_height)
-        else: # is_video
+        else:
             modified_path = await sync_crop_video(original_path, crop_width, crop_height)
 
         temp_files.append(modified_path)
@@ -95,7 +95,7 @@ async def crop_handler(bot: BOT, message: Message):
         
         if is_image:
             await bot.send_photo(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
-        else: # is_video
+        else:
             await bot.send_video(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
         
         await progress_message.delete()
