@@ -52,6 +52,14 @@ def sync_save_code_to_file(code_string: str, file_ext: str) -> str:
 
 @bot.add_cmd(cmd=["codegen", "cg"])
 async def codegen_handler(bot: BOT, message: Message):
+    """
+    CMD: CODEGEN / CG
+    INFO: Generates code based on a natural language prompt using Cloudflare's Code Llama.
+    USAGE:
+        .codegen [language] (description of the code)
+    EXAMPLE:
+        .codegen python a function to calculate fibonacci sequence
+    """
     if not CF_ACCOUNT_ID or not CF_API_TOKEN or "YOUR_KEY" in CF_API_TOKEN:
         return await message.reply("<b>Cloudflare AI not configured.</b>", del_in=ERROR_VISIBLE_DURATION)
     if not message.input:
