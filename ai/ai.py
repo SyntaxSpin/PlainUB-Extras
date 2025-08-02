@@ -29,17 +29,14 @@ async def ask_handler(bot: BOT, message: Message):
 
     prompt = message.input
     display_prompt = prompt
-    reply_to = message.id
     if message.replied and message.replied.text:
         replied_text = message.replied.text
         if prompt:
             display_prompt = f"(In reply to text) {prompt}"
             prompt = f"Based on the following text:\n---\n{replied_text}\n---\nAnswer this question: {prompt}"
-            reply_to = message.replied.id
         else:
             display_prompt = "(Summarizing replied text)"
             prompt = f"Summarize or analyze the following text:\n{replied_text}"
-            reply_to = message.replied.id
             
     if not prompt: return await message.reply("<b>Usage:</b> .ask [question]", del_in=ERROR_VISIBLE_DURATION)
 
@@ -64,12 +61,18 @@ async def ask_handler(bot: BOT, message: Message):
                 f"<pre language=llama3>{html.escape(ai_response)}</pre>"
             )
             
-            await bot.send_message(
-                chat_id=message.chat.id, text=final_output,
-                reply_parameters=ReplyParameters(message_id=reply_to)
-            )
+            if message.replied
+                await bot.send_message(
+                    chat_id=message.chat.id, text=final_output,
+                    reply_parameters=ReplyParameters(message_id=message.replied.id)
+                )
+                await progress_message.delete(); await message.delete()
+            else:
+                await progress_message.edit(
+                    chat_id=message.chat.id, text=final_output
+                )
+                await message.delete()
             
-            await progress_message.delete(); await message.delete()
         else:
             raise Exception(f"API Error: {response_data.get('errors') or 'Unknown error'}")
 
