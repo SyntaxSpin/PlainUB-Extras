@@ -48,7 +48,7 @@ async def ask_handler(bot: BOT, message: Message):
             del_in=ERROR_VISIBLE_DURATION
         )
 
-    progress_message = await message.reply("<code>Thinking with Llama 3...</code>")
+    progress_message = await message.reply("<code>Thinking...</code>")
 
     try:
         api_url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/ai/run/@cf/meta/llama-3-8b-instruct"
