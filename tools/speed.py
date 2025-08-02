@@ -119,7 +119,7 @@ async def speed_handler(bot: BOT, message: Message):
             await bot.send_video(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
         elif replied_msg.voice:
              await bot.send_voice(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
-        else: # Audio
+        else:
             await bot.send_audio(message.chat.id, modified_path, caption=caption, reply_parameters=reply_params)
         
         await progress_message.delete()
