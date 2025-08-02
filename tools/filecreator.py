@@ -10,10 +10,7 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 ERROR_VISIBLE_DURATION = 8
 
 def sync_create_file(filename: str, content: str) -> str:
-    """
-    Synchronously creates a file with the given content in the temp directory.
-    """
-    # Basic security: prevent path traversal attacks
+    """Synchronously creates a file with the given content in the temp directory."""
     if ".." in filename or "/" in filename:
         raise ValueError("Invalid filename. It cannot contain '..' or '/'.")
         
