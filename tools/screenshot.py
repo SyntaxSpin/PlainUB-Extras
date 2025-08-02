@@ -28,7 +28,7 @@ async def screenshot_handler(bot: BOT, message: Message):
     """
 
     if not SCREENSHOT_API_KEY or "YOUR_KEY" in SCREENSHOT_API_KEY:
-        return await message.reply("<b>SCREENSHOT_API_KEY is not configured.</b>", del_in=ERROR_VISIBLE_DURATION)
+        return await message.reply("<b>SCREENSHOT_API_KEY from is not configured.</b>", del_in=ERROR_VISIBLE_DURATION)
     if not message.input:
         return await message.reply("<b>Usage:</b> .screenshot [url]", del_in=ERROR_VISIBLE_DURATION)
 
