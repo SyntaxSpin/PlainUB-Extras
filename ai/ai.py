@@ -18,7 +18,7 @@ ERROR_VISIBLE_DURATION = 15
 @bot.add_cmd(cmd="ask")
 async def ask_handler(bot: BOT, message: Message):
     """
-    CMD: ASK / AI
+    CMD: ASK
     INFO: Asks a question to the Llama 3 AI model on Cloudflare.
     USAGE:
         .ask [question]
@@ -26,41 +26,41 @@ async def ask_handler(bot: BOT, message: Message):
     """
     if not CF_ACCOUNT_ID or not CF_API_TOKEN or "YOUR_KEY" in CF_API_TOKEN:
         return await message.reply(
-            "<b>Cloudflare AI not configured.</b>\n"
-            "Please add CF_ACCOUNT_ID and CF_API_TOKEN to your extra_config.env file.",
+            "<b>Cloudflare AI not configured.</b>",
             del_in=ERROR_VISIBLE_DURATION
         )
 
     prompt = message.input
+    display_prompt = prompt
+    
     if message.replied and message.replied.text:
         replied_text = message.replied.text
         if prompt:
+            display_prompt = f"(In reply to text) {prompt}"
             prompt = f"Based on the following text:\n\n---\n{replied_text}\n---\n\nAnswer this question: {prompt}"
         else:
+            display_prompt = "(Summarizing replied text)"
             prompt = f"Summarize or analyze the following text:\n\n{replied_text}"
 
     if not prompt:
         return await message.reply(
-            "<b>Usage:</b> .ask [question]\n"
-            "Or reply to a message with `.ask` to summarize it.",
+            "<b>Usage:</b> .ask [question]",
             del_in=ERROR_VISIBLE_DURATION
         )
 
-    progress_message = await message.reply("<code>Thinking...</code>")
+    progress_message = await message.reply("<code>Thinking with Llama 3...</code>")
 
     try:
         api_url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/ai/run/@cf/meta/llama-3-8b-instruct"
-        
         headers = {"Authorization": f"Bearer {CF_API_TOKEN}"}
-        
         payload = {
             "messages": [
-                {"role": "system", "content": "You are a friendly and helpful AI assistant."},
+                {"role": "system", "content": "You are a friendly and helpful AI assistant. Your answers should be concise and well-formatted."},
                 {"role": "user", "content": prompt}
             ]
         }
         
-        response = await asyncio.to_thread(requests.post, api_url, headers=headers, json=payload)
+        response = await asyncio.to_thread(requests.post, api_url, headers=headers, json=payload, timeout=120)
         response.raise_for_status()
         
         response_data = response.json()
@@ -68,9 +68,19 @@ async def ask_handler(bot: BOT, message: Message):
         if response_data.get("success"):
             ai_response = response_data["result"]["response"]
             
+            if len(display_prompt) > 3800:
+                display_prompt = display_prompt[:3800] + "..."
+            
+            safe_ai_response = html.escape(ai_response.strip())
+
+            final_output = (
+                f"<b>Prompt:</b> <i>{html.escape(display_prompt)}</i>\n\n"
+                f"<pre>{safe_ai_response}</pre>"
+            )
+
             await bot.send_message(
                 chat_id=message.chat.id,
-                text=ai_response,
+                text=final_output,
                 reply_parameters=ReplyParameters(message_id=message.id)
             )
             
@@ -79,6 +89,9 @@ async def ask_handler(bot: BOT, message: Message):
         else:
             raise Exception(f"API Error: {response_data.get('errors') or 'Unknown error'}")
 
+    except requests.exceptions.Timeout:
+         error_text = "<b>Error:</b> The request to the AI timed out (took too long)."
+         await progress_message.edit(error_text, del_in=ERROR_VISIBLE_DURATION)
     except Exception as e:
         error_text = f"<b>Error:</b> Could not get a response from the AI.\n<code>{html.escape(str(e))}</code>"
         await progress_message.edit(error_text, del_in=ERROR_VISIBLE_DURATION)
