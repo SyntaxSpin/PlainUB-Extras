@@ -18,20 +18,22 @@ def corrupt_file_sync(input_path: str) -> str:
     try:
         with open(output_path, "rb+") as f:
             file_size = os.path.getsize(output_path)
-            if file_size < 5000:
-                return output_path
-
-            start_pos = random.randint(1024, 4096)
             
-            corruption_size = random.randint(4096, 16384)
-
-            if start_pos + corruption_size > file_size:
-                corruption_size = file_size - start_pos -1
-
-            if corruption_size > 0:
-                f.seek(start_pos)
-                random_data = os.urandom(corruption_size)
+            header_size = 512
+            
+            if file_size <= header_size:
+                return output_path
+            f.seek(header_size)
+            
+            bytes_to_destroy = file_size - header_size
+            
+            chunk_size = 4096 
+            written_bytes = 0
+            while written_bytes < bytes_to_destroy:
+                bytes_to_write = min(chunk_size, bytes_to_destroy - written_bytes)
+                random_data = os.urandom(bytes_to_write)
                 f.write(random_data)
+                written_bytes += bytes_to_write
                     
     except Exception as e:
         raise IOError(f"Failed to corrupt file: {e}")
