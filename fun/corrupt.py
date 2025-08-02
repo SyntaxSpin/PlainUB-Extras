@@ -18,21 +18,20 @@ def corrupt_file_sync(input_path: str) -> str:
     try:
         with open(output_path, "rb+") as f:
             file_size = os.path.getsize(output_path)
-            if file_size < 100:
+            if file_size < 5000:
                 return output_path
-            start_pos = int(file_size * 0.1)
+
+            start_pos = random.randint(1024, 4096)
             
-            corruption_size = int(file_size * 0.8)
-            
-            f.seek(start_pos)
-            
-            chunk_size = 8192
-            written_bytes = 0
-            while written_bytes < corruption_size:
-                bytes_to_write = min(chunk_size, corruption_size - written_bytes)
-                random_data = os.urandom(bytes_to_write)
+            corruption_size = random.randint(4096, 16384)
+
+            if start_pos + corruption_size > file_size:
+                corruption_size = file_size - start_pos -1
+
+            if corruption_size > 0:
+                f.seek(start_pos)
+                random_data = os.urandom(corruption_size)
                 f.write(random_data)
-                written_bytes += bytes_to_write
                     
     except Exception as e:
         raise IOError(f"Failed to corrupt file: {e}")
@@ -71,12 +70,12 @@ async def corrupt_handler(bot: BOT, message: Message):
         
         corrupted_path = await asyncio.to_thread(corrupt_file_sync, original_path)
         
-        await progress_msg.edit("<code>Uploading corrupted file...</code>")
+        await progress_msg.edit("<code>Uploading file...</code>")
 
         await bot.send_document(
             chat_id=message.chat.id,
             document=corrupted_path,
-            caption="Here is your corrupted file.",
+            caption="Here is your file 💀.",
             reply_to_message_id=replied_msg.id
         )
         
