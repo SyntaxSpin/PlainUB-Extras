@@ -35,11 +35,12 @@ async def ask_handler(bot: BOT, message: Message):
         if prompt:
             display_prompt = f"(In reply to text) {prompt}"
             prompt = f"Based on the following text:\n---\n{replied_text}\n---\nAnswer this question: {prompt}"
-            reply_to = message.replied
+            reply_to = message.replied.id
         else:
             display_prompt = "(Summarizing replied text)"
             prompt = f"Summarize or analyze the following text:\n{replied_text}"
-            reply_to = message.replied
+            reply_to = message.replied.id
+            
     if not prompt: return await message.reply("<b>Usage:</b> .ask [question]", del_in=ERROR_VISIBLE_DURATION)
 
     progress_message = await message.reply("<code>Thinking...</code>")
