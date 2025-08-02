@@ -69,7 +69,7 @@ async def ask_handler(bot: BOT, message: Message):
                 await progress_message.delete(); await message.delete()
             else:
                 await progress_message.edit(
-                    chat_id=message.chat.id, text=final_output
+                    text=final_output
                 )
                 await message.delete()
             
