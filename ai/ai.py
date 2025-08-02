@@ -3,13 +3,13 @@ import html
 import asyncio
 import requests
 from pyrogram.types import Message, ReplyParameters
+from dotenv import load_dotenv
 
 from app import BOT, bot
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODULES_DIR = os.path.dirname(SCRIPT_DIR)
 ENV_PATH = os.path.join(MODULES_DIR, "extra_config.env")
-from dotenv import load_dotenv
 load_dotenv(dotenv_path=ENV_PATH)
 CF_ACCOUNT_ID = os.getenv("CF_ACCOUNT_ID")
 CF_API_TOKEN = os.getenv("CF_API_TOKEN")
