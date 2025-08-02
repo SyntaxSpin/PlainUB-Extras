@@ -12,7 +12,7 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 
 def corrupt_file_sync(input_path: str) -> str:
     base, ext = os.path.splitext(os.path.basename(input_path))
-    output_path = os.path.join(TEMP_DIR, f"{base}_corrupted{ext}")
+    output_path = os.path.join(TEMP_DIR, f"{base}c{ext}")
     shutil.copy(input_path, output_path)
     
     try:
