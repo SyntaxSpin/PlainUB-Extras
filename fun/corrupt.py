@@ -16,25 +16,15 @@ TEXT_EXTENSIONS = {
 }
 
 def corrupt_file_sync(input_path: str) -> str:
-    """Inteligentnie uszkadza plik w zależności od tego, czy jest tekstowy, czy binarny."""
     _, ext = os.path.splitext(os.path.basename(input_path))
     
     if ext.lower() in TEXT_EXTENSIONS:
         try:
-            with open(input_path, "r+", encoding='utf-8', errors='ignore') as f:
-                first_line = f.readline()
-                file_size = os.path.getsize(input_path)
-                
-                bytes_to_destroy = file_size - len(first_line.encode('utf-8', 'ignore'))
-                if bytes_to_destroy <= 0:
-                    return input_path
+            file_size = os.path.getsize(input_path)
+            random_data = os.urandom(file_size)
+            with open(input_path, "wb") as f:
+                f.write(random_data)
 
-                random_garbage_bytes = os.urandom(bytes_to_destroy)
-                garbage_text = random_garbage_bytes.decode('utf-8', errors='replace')
-                
-                f.seek(0)
-                f.truncate()
-                f.write(first_line + garbage_text)
         except Exception as e:
             raise IOError(f"Failed to corrupt text file: {e}")
     else:
