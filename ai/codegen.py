@@ -90,7 +90,6 @@ async def codegen_handler(bot: BOT, message: Message):
         if response_data.get("success"):
             generated_code = response_data["result"]["response"].strip()
             
-            # Clean up the code - remove markdown code blocks if the AI adds them anyway
             if "```" in generated_code:
                 try:
                     code_block = generated_code.split("```")[1]
@@ -98,9 +97,8 @@ async def codegen_handler(bot: BOT, message: Message):
                         code_block = '\n'.join(code_block.split('\n')[1:])
                     generated_code = code_block.strip()
                 except IndexError:
-                    pass # Keep the full response if parsing fails
+                    pass
 
-            # Get the correct file extension, or fallback to .txt
             file_extension = LANGUAGE_EXTENSIONS.get(language, "txt")
             
             output_path = await asyncio.to_thread(sync_save_code_to_file, generated_code, file_extension)
