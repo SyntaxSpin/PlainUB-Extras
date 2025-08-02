@@ -29,15 +29,17 @@ async def ask_handler(bot: BOT, message: Message):
 
     prompt = message.input
     display_prompt = prompt
+    reply_to = message.id
     if message.replied and message.replied.text:
         replied_text = message.replied.text
         if prompt:
             display_prompt = f"(In reply to text) {prompt}"
             prompt = f"Based on the following text:\n---\n{replied_text}\n---\nAnswer this question: {prompt}"
+            reply_to = message.replied
         else:
             display_prompt = "(Summarizing replied text)"
             prompt = f"Summarize or analyze the following text:\n{replied_text}"
-
+            reply_to = message.replied
     if not prompt: return await message.reply("<b>Usage:</b> .ask [question]", del_in=ERROR_VISIBLE_DURATION)
 
     progress_message = await message.reply("<code>Thinking...</code>")
@@ -63,7 +65,7 @@ async def ask_handler(bot: BOT, message: Message):
             
             await bot.send_message(
                 chat_id=message.chat.id, text=final_output,
-                reply_parameters=ReplyParameters(message_id=message.id)
+                reply_parameters=ReplyParameters(message_id=reply_to)
             )
             
             await progress_message.delete(); await message.delete()
@@ -73,5 +75,4 @@ async def ask_handler(bot: BOT, message: Message):
     except requests.exceptions.Timeout:
          await progress_message.edit("<b>Error:</b> The request to the AI timed out.", del_in=ERROR_VISIBLE_DURATION)
     except Exception as e:
-        # If the message is too long for Telegram, this will catch the error.
         await progress_message.edit(f"<b>Error:</b> Could not get a response.\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
