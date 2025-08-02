@@ -61,8 +61,6 @@ async def ask_handler(bot: BOT, message: Message):
                 f"<pre language=llama3>{html.escape(ai_response)}</pre>"
             )
             
-            # We send the message, but if it's still too long, Telegram will raise an error.
-            # This is better than complex splitting logic.
             await bot.send_message(
                 chat_id=message.chat.id, text=final_output,
                 reply_parameters=ReplyParameters(message_id=message.id)
