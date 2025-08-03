@@ -196,7 +196,7 @@ async def codeit_handler(bot: BOT, message: Message):
     USAGE:
         .codeit [lang] (text)
         .codeit [lang] (in reply to a message)
-    LANGUAGES: python, java, c++, js, cs, html, kotlin, asm, go, rust, swift, ruby, php, c, bf, lol
+    LANGUAGES: ada, asm, bash, bf, c, c++, clojure, cobol, cs, dart, elixir, erlang, fsharp, fortran, gdscript, go, graphql, haskell, html, java, js, julia, kotlin, latex, less, lisp, lol, matlab, mql, ocaml, perl, php, plpgsql, powershell, prolog, py, qsharp, r, rb, regex, rs, sass, scheme, scss, scratch, solidity, sql, swift, tsql, verilog, vhdl
     """
     replied_msg = message.replied
     
