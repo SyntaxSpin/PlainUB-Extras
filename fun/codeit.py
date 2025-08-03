@@ -100,6 +100,11 @@ def generate_code(language: str, text: str) -> str:
         "Ruby": f'puts "{escaped_text}"',
         "PHP": f'<?php\n\necho "{escaped_text}";\n',
         "C": f'#include <stdio.h>\n\nint main() {{\n    printf("{escaped_text}");\n    return 0;\n}}',
+        "LOLCODE": (
+            'HAI 1.2\n'
+            f'VISIBLE "{text}"\n'
+            'KTHXBYE'
+        ),
     }
     return code_templates.get(language, f"// Language '{language}' not supported.")
 
@@ -121,7 +126,7 @@ async def codeit_handler(bot: BOT, message: Message):
     USAGE:
         .codeit [lang] (text)
         .codeit [lang] (in reply to a message)
-    LANGUAGES: python, java, c++, js, cs, html, kotlin, asm, go, rust, swift, ruby, php, c, bf
+    LANGUAGES: python, java, c++, js, cs, html, kotlin, asm, go, rust, swift, ruby, php, c, bf, lol
     """
     replied_msg = message.replied
     
