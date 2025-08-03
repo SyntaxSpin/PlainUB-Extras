@@ -1,16 +1,12 @@
-import os
 import html
-import shutil
 from pyrogram.enums import ChatType, UserStatus
-from pyrogram.types import Chat, Message, User, LinkPreviewOptions, ReplyParameters
+from pyrogram.types import Chat, Message, User, LinkPreviewOptions
 
 from app import BOT, bot
 
-TEMP_INFO_DIR = "temp_info_photos/"
-
 def safe_escape(text: str) -> str:
-    escaped_text = html.escape(str(text))
-    return escaped_text.replace("&#x27;", "’")
+    """Safely escapes HTML special characters."""
+    return html.escape(str(text))
 
 def get_user_status(user: User) -> str:
     """Formats the user's online status into a readable string."""
@@ -27,8 +23,8 @@ def get_user_status(user: User) -> str:
     }
     return status_map.get(user.status, "<i>Unknown status</i>")
 
-async def format_user_info(user: User) -> tuple[str, str | None]:
-    """Formats the information for a user."""
+async def format_user_info(user: User) -> str:
+    """Formats the information for a user into a single text string."""
     full_chat_info = await bot.get_chat(user.id)
     info_lines = ["<b>User Info:</b>"]
     
@@ -60,11 +56,10 @@ async def format_user_info(user: User) -> tuple[str, str | None]:
     except Exception:
         pass
 
-    photo_id = full_chat_info.photo.big_file_id if full_chat_info.photo else None
-    return "\n".join(info_lines), photo_id
+    return "\n".join(info_lines)
 
-async def format_chat_info(chat: Chat) -> tuple[str, str | None]:
-    """Formats the information for a group or channel."""
+async def format_chat_info(chat: Chat) -> str:
+    """Formats the information for a group or channel into a single text string."""
     info_lines = ["<b>Chat Info:</b>"]
     info_lines.append(f"• <b>Title:</b> {safe_escape(chat.title)}")
     info_lines.append(f"• <b>ID:</b> <code>{chat.id}</code>")
@@ -89,11 +84,19 @@ async def format_chat_info(chat: Chat) -> tuple[str, str | None]:
     if chat.linked_chat:
         info_lines.append(f"• <b>Linked Chat ID:</b> <code>{chat.linked_chat.id}</code>")
 
-    photo_id = chat.photo.big_file_id if chat.photo else None
-    return "\n".join(info_lines), photo_id
+    return "\n".join(info_lines)
 
 @bot.add_cmd(cmd=["info", "whois"])
 async def info_handler(bot: BOT, message: Message):
+    """
+    CMD: INFO
+    INFO: Gets detailed information about a user, bot, group, or channel.
+    USAGE:
+        .info (gets info about yourself)
+        .info [user_id/@username/chat_id]
+        .info (in reply to a message)
+    ALIASES: .whois
+    """
     progress: Message = await message.reply("<code>Fetching information...</code>")
 
     target_identifier = None
@@ -104,39 +107,25 @@ async def info_handler(bot: BOT, message: Message):
     else:
         target_identifier = "me"
 
-    final_text, photo_id = "", None
+    final_text = ""
     
     try:
         target_chat = await bot.get_chat(target_identifier)
         
         if target_chat.type == ChatType.PRIVATE:
             target_user = await bot.get_users(target_chat.id)
-            final_text, photo_id = await format_user_info(target_user)
+            final_text = await format_user_info(target_user)
         else:
-            final_text, photo_id = await format_chat_info(target_chat)
+            final_text = await format_chat_info(target_chat)
 
     except Exception as e:
-        return await progress.edit(f"<b>Error:</b> Could not find the specified entity.\n<code>{safe_escape(str(e))}</code>")
-
-    if photo_id:
-        photo_path = ""
-        try:
-            os.makedirs(TEMP_INFO_DIR, exist_ok=True)
-            photo_path = await bot.download_media(photo_id, file_name=TEMP_INFO_DIR)
-            
-            await bot.send_photo(
-                chat_id=message.chat.id,
-                photo=photo_path,
-                caption=final_text,
-                reply_parameters=ReplyParameters(message_id=message.id)
-            )
-            await progress.delete()
-        finally:
-            if os.path.exists(photo_path):
-                shutil.rmtree(TEMP_INFO_DIR, ignore_errors=True)
-    else:
-        await message.reply(
-            final_text,
-            link_preview_options=LinkPreviewOptions(is_disabled=True)
+        return await progress.edit(
+            f"<b>Error:</b> Could not find the specified entity.\n<code>{safe_escape(str(e))}</code>"
         )
-        await progress.delete()
+    
+    await progress.edit(
+        final_text,
+        link_preview_options=LinkPreviewOptions(is_disabled=True)
+    )
+
+    await message.delete()
