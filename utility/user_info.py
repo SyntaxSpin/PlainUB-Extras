@@ -1,8 +1,6 @@
 import html
-from datetime import datetime
-
-from pyrogram.enums import UserStatus
-from pyrogram.types import LinkPreviewOptions, Message, User
+from pyrogram.enums import ChatType, UserStatus
+from pyrogram.types import Chat, Message, User, LinkPreviewOptions, ReplyParameters
 
 from app import BOT, bot
 
@@ -11,104 +9,133 @@ def safe_escape(text: str) -> str:
     return escaped_text.replace("&#x27;", "’")
 
 def get_user_status(user: User) -> str:
+    """Formats the user's online status into a readable string."""
     if not user.status:
         return "<i>Unknown</i>"
     
-    if user.status == UserStatus.ONLINE:
-        return "🟢 Online"
-    if user.status == UserStatus.OFFLINE:
-        return f"🔴 Offline (Last seen: {user.last_online_date.strftime('%Y-%m-%d %H:%M')})"
-    if user.status == UserStatus.RECENTLY:
-        return "🟠 Last seen recently"
-    if user.status == UserStatus.LAST_WEEK:
-        return "🟡 Last seen last week"
-    if user.status == UserStatus.LAST_MONTH:
-        return "⚪️ Last seen last month"
-    
-    return "<i>Unknown status</i>"
+    last_seen = user.last_online_date.strftime('%Y-%m-%d %H:%M') if user.last_online_date else 'unknown'
+    status_map = {
+        UserStatus.ONLINE: "🟢 Online",
+        UserStatus.OFFLINE: f"🔴 Offline (Last seen: {last_seen})",
+        UserStatus.RECENTLY: "🟠 Last seen recently",
+        UserStatus.LAST_WEEK: "🟡 Last seen last week",
+        UserStatus.LAST_MONTH: "⚪️ Last seen last month"
+    }
+    return status_map.get(user.status, "<i>Unknown status</i>")
 
-
-@bot.add_cmd(cmd=["info", "whois", "userinfo"])
-async def info_handler(bot: BOT, message: Message):
-    progress: Message = await message.reply("<code>Fetching user information...</code>")
-
-    target_user: User | None = None
-    
-    if message.input:
-        target_identifier = message.input
-    elif message.replied:
-        target_identifier = message.replied.from_user.id
-    else:
-        target_identifier = message.from_user.id
-
-    try:
-        target_user = await bot.get_users(target_identifier)
-        full_chat_info = await bot.get_chat(target_user.id)
-    except Exception as e:
-        return await progress.edit(
-            f"<b>Error:</b> Could not find the specified user.\n<code>{safe_escape(str(e))}</code>"
-        )
-
+async def format_user_info(user: User) -> tuple[str, str | None]:
+    """Formats the information for a user."""
+    full_chat_info = await bot.get_chat(user.id)
     info_lines = ["<b>User Info:</b>"]
     
-    full_name = target_user.first_name
-    if target_user.last_name:
-        full_name += f" {target_user.last_name}"
+    full_name = user.first_name
+    if user.last_name:
+        full_name += f" {user.last_name}"
     info_lines.append(f"• <b>Name:</b> {safe_escape(full_name)}")
-    info_lines.append(f"• <b>ID:</b> <code>{target_user.id}</code>")
+    info_lines.append(f"• <b>ID:</b> <code>{user.id}</code>")
 
-    if target_user.username:
-        info_lines.append(f"• <b>Username:</b> @{target_user.username}")
-        info_lines.append(f"• <b>Permalink:</b> <a href='https://t.me/{target_user.username}'>t.me/{target_user.username}</a>")
+    if user.username:
+        info_lines.append(f"• <b>Username:</b> @{user.username}")
+        info_lines.append(f"• <b>Permalink:</b> <a href='https://t.me/{user.username}'>{user.username}</a>")
     else:
-        info_lines.append(f"• <b>Permalink:</b> {target_user.mention(style='md')}")
+        info_lines.append(f"• <b>Permalink:</b> {user.mention(style='md')}")
 
-    info_lines.append(f"• <b>Status:</b> {get_user_status(target_user)}")
-
+    info_lines.append(f"• <b>Status:</b> {get_user_status(user)}")
     if full_chat_info.bio:
         info_lines.append(f"• <b>Bio:</b> {safe_escape(full_chat_info.bio)}")
+    info_lines.append(f"• <b>Type:</b> {'Bot 🤖' if user.is_bot else 'User 👤'}")
         
-    if target_user.is_bot:
-        info_lines.append("• <b>Type:</b> Bot 🤖")
-    else:
-        info_lines.append("• <b>Type:</b> User 👤")
-        
-    flags = []
-    if target_user.is_verified:
-        flags.append("Verified ✅")
-    if target_user.is_scam:
-        flags.append("Scam ‼️")
-    if target_user.is_premium:
-        flags.append("Premium ✨")
+    flags = [flag for c, flag in [(user.is_verified, "Verified ✅"), (user.is_scam, "Scam ‼️"), (user.is_premium, "Premium ✨")] if c]
     if flags:
         info_lines.append(f"• <b>Flags:</b> {', '.join(flags)}")
-
-    if target_user.dc_id:
-        info_lines.append(f"• <b>Data Center:</b> {target_user.dc_id}")
-        
+    if user.dc_id:
+        info_lines.append(f"• <b>Data Center:</b> {user.dc_id}")
     try:
-        common_chats_count = len(await target_user.get_common_chats())
+        common_chats_count = await bot.get_common_chats_count(user.id)
         info_lines.append(f"• <b>Common Groups:</b> {common_chats_count}")
     except Exception:
         pass
 
-    final_text = "\n".join(info_lines)
+    photo_id = full_chat_info.photo.big_file_id if full_chat_info.photo else None
+    return "\n".join(info_lines), photo_id
+
+async def format_chat_info(chat: Chat) -> tuple[str, str | None]:
+    """Formats the information for a group or channel."""
+    info_lines = ["<b>Chat Info:</b>"]
+    info_lines.append(f"• <b>Title:</b> {safe_escape(chat.title)}")
+    info_lines.append(f"• <b>ID:</b> <code>{chat.id}</code>")
+
+    type_map = {ChatType.GROUP: "Group 👥", ChatType.SUPERGROUP: "Supergroup 👥", ChatType.CHANNEL: "Channel 📢"}
+    info_lines.append(f"• <b>Type:</b> {type_map.get(chat.type, '<i>Unknown</i>')}")
+
+    if chat.username:
+        info_lines.append(f"• <b>Username:</b> @{chat.username}")
+        info_lines.append(f"• <b>Permalink:</b> <a href='https://t.me/{chat.username}'>{chat.username}</a>")
+    if chat.description:
+        desc = chat.description
+        info_lines.append(f"• <b>Description:</b> {safe_escape(desc[:200] + '...' if len(desc) > 200 else desc)}")
+    if chat.members_count:
+        info_lines.append(f"• <b>Members:</b> {chat.members_count}")
+
+    flags = [flag for c, flag in [(chat.is_verified, "Verified ✅"), (chat.is_scam, "Scam ‼️"), (chat.is_restricted, "Restricted 🔞")] if c]
+    if flags:
+        info_lines.append(f"• <b>Flags:</b> {', '.join(flags)}")
+    if chat.dc_id:
+        info_lines.append(f"• <b>Data Center:</b> {chat.dc_id}")
+    if chat.linked_chat:
+        info_lines.append(f"• <b>Linked Chat ID:</b> <code>{chat.linked_chat.id}</code>")
+
+    photo_id = chat.photo.big_file_id if chat.photo else None
+    return "\n".join(info_lines), photo_id
+
+@bot.add_cmd(cmd=["info", "whois"])
+async def info_handler(bot: BOT, message: Message):
+    """
+    CMD: INFO / WHOIS
+    INFO: Gets detailed information about a user, bot, group, or channel.
+    USAGE:
+        .info (gets info about yourself)
+        .info [ID/@username/]
+        .info (in reply to a message)
+    """
+    progress: Message = await message.reply("<code>Fetching information...</code>")
+
+    target_identifier = None
     
-    photo_to_send = None
+    if message.input:
+        target_identifier = message.input.strip()
+    elif message.replied:
+        target_identifier = message.replied.from_user.id if message.replied.from_user else message.replied.chat.id
+    else:
+        target_identifier = "me"
+
+    final_text, photo_to_send = "", None
+    
     try:
-        async for photo in bot.get_chat_photos(target_user.id, limit=1):
-            photo_to_send = photo.file_id
-    except Exception:
-        pass
+        target_chat = await bot.get_chat(target_identifier)
+        
+        if target_chat.type == ChatType.PRIVATE:
+            final_text, photo_to_send = await format_user_info(target_chat)
+        else:
+            final_text, photo_to_send = await format_chat_info(target_chat)
+
+    except Exception as e:
+        return await progress.edit(
+            f"<b>Error:</b> Could not find the specified entity.\n<code>{safe_escape(str(e))}</code>"
+        )
     
+    await progress.delete()
+
     if photo_to_send:
-        await progress.delete()
-        await message.reply_photo(
+        await bot.send_photo(
+            chat_id=message.chat.id,
             photo=photo_to_send,
-            caption=final_text
+            caption=final_text,
+            reply_parameters=ReplyParameters(message_id=message.id),
+            link_preview_options=LinkPreviewOptions(is_disabled=True)
         )
     else:
-        await progress.edit(
+        await message.reply(
             final_text,
             link_preview_options=LinkPreviewOptions(is_disabled=True)
         )
