@@ -10,19 +10,45 @@ from app import BOT, bot
 TEMP_DIR = "temp_corrupt/"
 os.makedirs(TEMP_DIR, exist_ok=True)
 
-def corrupt_file_sync(input_path: str) -> str:
-    try:
-        file_size = os.path.getsize(input_path)
-        if file_size == 0:
-            return input_path
-            
-        random_data = os.urandom(file_size)
-        with open(input_path, "wb") as f:
-            f.write(random_data)
+TEXT_EXTENSIONS = {
+    '.txt', '.py', '.json', '.xml', '.html', '.css', '.js', '.md', '.csv', 
+    '.log', '.ini', '.conf', '.cfg', '.sh', '.bat', '.yaml', '.yml'
+}
 
-    except Exception as e:
-        raise IOError(f"Failed to corrupt file: {e}")
-        
+def corrupt_file_sync(input_path: str) -> str:
+    _, ext = os.path.splitext(os.path.basename(input_path))
+    
+    if ext.lower() in TEXT_EXTENSIONS:
+        try:
+            file_size = os.path.getsize(input_path)
+            random_data = os.urandom(file_size)
+            with open(input_path, "wb") as f:
+                f.write(random_data)
+
+        except Exception as e:
+            raise IOError(f"Failed to corrupt text file: {e}")
+    else:
+        try:
+            with open(input_path, "rb+") as f:
+                file_size = os.path.getsize(input_path)
+                header_size = 512
+                
+                if file_size <= header_size:
+                    return input_path
+
+                f.seek(header_size)
+                bytes_to_destroy = file_size - header_size
+                
+                chunk_size = 4096
+                written_bytes = 0
+                while written_bytes < bytes_to_destroy:
+                    bytes_to_write = min(chunk_size, bytes_to_destroy - written_bytes)
+                    random_data = os.urandom(bytes_to_write)
+                    f.write(random_data)
+                    written_bytes += bytes_to_write
+        except Exception as e:
+            raise IOError(f"Failed to corrupt binary file: {e}")
+            
     return input_path
 
 @bot.add_cmd(cmd="corrupt")
