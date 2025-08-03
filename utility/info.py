@@ -131,8 +131,7 @@ async def info_handler(bot: BOT, message: Message):
             chat_id=message.chat.id,
             photo=photo_to_send,
             caption=final_text,
-            reply_parameters=ReplyParameters(message_id=message.id),
-            link_preview_options=LinkPreviewOptions(is_disabled=True)
+            reply_parameters=ReplyParameters(message_id=message.id)
         )
     else:
         await message.reply(
