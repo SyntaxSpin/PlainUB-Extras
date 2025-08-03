@@ -2,7 +2,7 @@ import os
 import html
 import asyncio
 import qrcode
-from pyrogram.types import Message
+from pyrogram.types import Message, ReplyParameters
 
 from app import BOT, bot
 
@@ -43,17 +43,14 @@ async def make_qr_handler(bot: BOT, message: Message):
             qr_img.save(output_path)
 
         await asyncio.to_thread(generate_qr_sync)
-        
-        caption_text = f"QR code for:\n<code>{html.escape(data_to_encode)}</code>"
-        
-        if len(caption_text) > 1024:
-            caption_text = "QR code generated (content too long to display)."
+
+        text_caption = f"Your QR code"
 
         await bot.send_photo(
             chat_id=message.chat.id,
             photo=output_path,
-            caption=caption_text,
-            reply_to_message_id=message.id
+            caption=text_caption,
+            reply_params = ReplyParameters(message_id=message.replied.id)
         )
         
         await progress_msg.delete()
