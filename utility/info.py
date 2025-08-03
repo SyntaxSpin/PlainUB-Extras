@@ -108,10 +108,13 @@ async def info_handler(bot: BOT, message: Message):
     
     try:
         target_chat = await bot.get_chat(target_identifier)
+        
         if target_chat.type == ChatType.PRIVATE:
-            final_text, photo_id = await format_user_info(target_chat)
+            target_user = await bot.get_users(target_chat.id)
+            final_text, photo_id = await format_user_info(target_user)
         else:
             final_text, photo_id = await format_chat_info(target_chat)
+
     except Exception as e:
         return await progress.edit(f"<b>Error:</b> Could not find the specified entity.\n<code>{safe_escape(str(e))}</code>")
     
