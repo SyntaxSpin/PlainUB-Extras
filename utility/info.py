@@ -1,8 +1,12 @@
+import os
 import html
+import shutil
 from pyrogram.enums import ChatType, UserStatus
 from pyrogram.types import Chat, Message, User, LinkPreviewOptions, ReplyParameters
 
 from app import BOT, bot
+
+TEMP_INFO_DIR = "temp_info_photos/"
 
 def safe_escape(text: str) -> str:
     escaped_text = html.escape(str(text))
@@ -90,18 +94,9 @@ async def format_chat_info(chat: Chat) -> tuple[str, str | None]:
 
 @bot.add_cmd(cmd=["info", "whois"])
 async def info_handler(bot: BOT, message: Message):
-    """
-    CMD: INFO / WHOIS
-    INFO: Gets detailed information about a user, bot, group, or channel.
-    USAGE:
-        .info (gets info about yourself)
-        .info [ID/@username/]
-        .info (in reply to a message)
-    """
     progress: Message = await message.reply("<code>Fetching information...</code>")
 
     target_identifier = None
-    
     if message.input:
         target_identifier = message.input.strip()
     elif message.replied:
@@ -109,30 +104,34 @@ async def info_handler(bot: BOT, message: Message):
     else:
         target_identifier = "me"
 
-    final_text, photo_to_send = "", None
+    final_text, photo_id = "", None
     
     try:
         target_chat = await bot.get_chat(target_identifier)
-        
         if target_chat.type == ChatType.PRIVATE:
-            final_text, photo_to_send = await format_user_info(target_chat)
+            final_text, photo_id = await format_user_info(target_chat)
         else:
-            final_text, photo_to_send = await format_chat_info(target_chat)
-
+            final_text, photo_id = await format_chat_info(target_chat)
     except Exception as e:
-        return await progress.edit(
-            f"<b>Error:</b> Could not find the specified entity.\n<code>{safe_escape(str(e))}</code>"
-        )
+        return await progress.edit(f"<b>Error:</b> Could not find the specified entity.\n<code>{safe_escape(str(e))}</code>")
     
     await progress.delete()
 
-    if photo_to_send:
-        await bot.send_photo(
-            chat_id=message.chat.id,
-            photo=photo_to_send,
-            caption=final_text,
-            reply_parameters=ReplyParameters(message_id=message.id)
-        )
+    if photo_id:
+        photo_path = ""
+        try:
+            os.makedirs(TEMP_INFO_DIR, exist_ok=True)
+            photo_path = await bot.download_media(photo_id, file_name=TEMP_INFO_DIR)
+            
+            await bot.send_photo(
+                chat_id=message.chat.id,
+                photo=photo_path,
+                caption=final_text,
+                reply_parameters=ReplyParameters(message_id=message.id)
+            )
+        finally:
+            if os.path.exists(photo_path):
+                shutil.rmtree(TEMP_INFO_DIR, ignore_errors=True)
     else:
         await message.reply(
             final_text,
