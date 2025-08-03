@@ -57,7 +57,7 @@ async def ask_handler(bot: BOT, message: Message):
             ai_response = response_data["result"]["response"].strip()
             
             final_output = (
-                f"<b>Prompt:</b> <i>{html.escape(display_prompt)}</i>\n\n"
+                f"<b>Prompt:</b> <i>{html.escape(display_prompt)}</i>\n"
                 f"<pre language=llama3>{html.escape(ai_response)}</pre>"
             )
             
