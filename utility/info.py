@@ -117,8 +117,6 @@ async def info_handler(bot: BOT, message: Message):
 
     except Exception as e:
         return await progress.edit(f"<b>Error:</b> Could not find the specified entity.\n<code>{safe_escape(str(e))}</code>")
-    
-    await progress.delete()
 
     if photo_id:
         photo_path = ""
@@ -132,6 +130,7 @@ async def info_handler(bot: BOT, message: Message):
                 caption=final_text,
                 reply_parameters=ReplyParameters(message_id=message.id)
             )
+            await progress.delete()
         finally:
             if os.path.exists(photo_path):
                 shutil.rmtree(TEMP_INFO_DIR, ignore_errors=True)
@@ -140,3 +139,4 @@ async def info_handler(bot: BOT, message: Message):
             final_text,
             link_preview_options=LinkPreviewOptions(is_disabled=True)
         )
+        await progress.delete()
