@@ -26,6 +26,7 @@ LANGUAGES = {
     "php": ("PHP", "php"),
     "c": ("C", "c"),
     "brainfuck": ("Brainfuck", "bf"), "bf": ("Brainfuck", "bf"),
+    "lolcode": ("LOLCODE", "lol"), "lol": ("LOLCODE", "lol"),
 }
 
 def text_to_brainfuck(text: str) -> str:
@@ -63,6 +64,10 @@ def text_to_brainfuck(text: str) -> str:
 
 def generate_code(language: str, text: str) -> str:
     """Generates a 'Hello, World!'-style program for the given language and text."""
+
+    if language == "Brainfuck":
+        return text_to_brainfuck(text)
+
     escaped_text = text.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
     code_templates = {
         "Python": f'print("{escaped_text}")',
@@ -116,7 +121,7 @@ async def codeit_handler(bot: BOT, message: Message):
     USAGE:
         .codeit [lang] (text)
         .codeit [lang] (in reply to a message)
-    LANGUAGES: python, java, c++, js, cs, html, kotlin, asm, go, rust, swift, ruby, php, c
+    LANGUAGES: python, java, c++, js, cs, html, kotlin, asm, go, rust, swift, ruby, php, c, bf
     """
     replied_msg = message.replied
     
