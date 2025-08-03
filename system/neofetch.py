@@ -38,7 +38,7 @@ async def neofetch_handler(bot: BOT, message: Message):
         stdout, stderr, returncode = await run_command("neofetch --stdout")
         
         if returncode == 0:
-            final_text = f"<code>{html.escape(stdout)}</code>"
+            final_text = f"<b>Host Info:</b>\n<pre>{html.escape(stdout)}</pre>"
             
             await progress_message.edit(final_text)
             await message.delete()
