@@ -87,9 +87,11 @@ async def chat_info_handler(bot: BOT, message: Message):
     
     if photo_to_send:
         await progress.delete()
-        await message.reply_photo(
+        await bot.send_photo(
+            chat_id=message.chat.id,
             photo=photo_to_send,
             caption=final_text,
+            reply_parameters=ReplyParameters(message_id=message.id),
             link_preview_options=LinkPreviewOptions(is_disabled=True)
         )
     else:
