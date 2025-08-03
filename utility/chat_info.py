@@ -1,6 +1,6 @@
 import html
 from pyrogram.enums import ChatType
-from pyrogram.types import Chat, Message, LinkPreviewOptions
+from pyrogram.types import Chat, Message, LinkPreviewOptions, ReplyParameters
 
 from app import BOT, bot
 
