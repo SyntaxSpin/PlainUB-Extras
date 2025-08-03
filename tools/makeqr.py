@@ -44,7 +44,7 @@ async def make_qr_handler(bot: BOT, message: Message):
 
         await asyncio.to_thread(generate_qr_sync)
 
-        text_caption = f"Your QR code"
+        text_caption = f"Your generated QR code"
 
         if message.replied:
             await bot.send_photo(
