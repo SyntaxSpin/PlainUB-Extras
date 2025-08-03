@@ -51,7 +51,7 @@ async def format_user_info(user: User) -> str:
     if user.dc_id:
         info_lines.append(f"• <b>Data Center:</b> {user.dc_id}")
     try:
-        common_chats_count = await bot.get_common_chats_count(user.id)
+        common_chats_count = len(await target_user.get_common_chats())
         info_lines.append(f"• <b>Common Groups:</b> {common_chats_count}")
     except Exception:
         pass
