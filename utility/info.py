@@ -5,8 +5,8 @@ from pyrogram.types import Chat, Message, User, LinkPreviewOptions
 from app import BOT, bot
 
 def safe_escape(text: str) -> str:
-    """Safely escapes HTML special characters."""
-    return html.escape(str(text))
+    escaped_text = html.escape(str(text))
+    return escaped_text.replace("&#x27;", "’")
 
 def get_user_status(user: User) -> str:
     """Formats the user's online status into a readable string."""
