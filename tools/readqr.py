@@ -51,7 +51,7 @@ async def read_qr_handler(bot: BOT, message: Message):
         qr_data = decoded_objects[0].data.decode("utf-8")
         
         output_text = (f"<b>QR Code Content:</b>\n"
-                       f"<pre><code>{html.escape(qr_data)}</code></pre>")
+                       f"<pre>{html.escape(qr_data)}</pre>")
 
         await bot.send_message(
             chat_id=message.chat.id,
