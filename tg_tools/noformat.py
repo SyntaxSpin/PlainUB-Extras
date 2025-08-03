@@ -1,5 +1,5 @@
 import html
-from pyrogram.types import Message
+from pyrogram.types import Message, ReplyParameters
 from pyrogram.enums import ParseMode
 
 from app import BOT, bot
@@ -37,7 +37,7 @@ async def noformat_handler(bot: BOT, message: Message):
         await bot.send_message(
             chat_id=message.chat.id,
             text=output_text,
-            reply_to_message_id=replied_msg.id,
+            reply_parameters = ReplyParameters(message_id=replied_msg.id)
             parse_mode=ParseMode.HTML
         )
         
