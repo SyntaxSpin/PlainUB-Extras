@@ -25,7 +25,41 @@ LANGUAGES = {
     "ruby": ("Ruby", "rb"), "rb": ("Ruby", "rb"),
     "php": ("PHP", "php"),
     "c": ("C", "c"),
+    "brainfuck": ("Brainfuck", "bf"), "bf": ("Brainfuck", "bf"),
 }
+
+def text_to_brainfuck(text: str) -> str:
+    brainfuck_code = []
+    memory = [0]
+    pointer = 0
+    
+    for char in text:
+        target_value = ord(char)
+        current_value = memory[pointer]
+        diff = target_value - current_value
+        simple_way = ('+' * diff if diff > 0 else '-' * abs(diff))
+        loop_way = ""
+
+        if abs(diff) > 10:
+            factor = int(target_value**0.5)
+            if factor > 1:
+                remaining = target_value - (factor * factor)
+                loop_code = f">{'+'*factor}[<{''.join(['+']*factor)}>-]<"
+                if remaining > 0:
+                    loop_code += '+' * remaining
+                else:
+                    loop_code += '-' * abs(remaining)
+                if len(loop_code) < len(simple_way):
+                    loop_way = loop_code
+
+        if loop_way and not current_value:
+             brainfuck_code.append(loop_way)
+        else:
+            brainfuck_code.append(simple_way)
+
+        brainfuck_code.append('.')
+        memory[pointer] = target_value
+    return "".join(brainfuck_code)
 
 def generate_code(language: str, text: str) -> str:
     """Generates a 'Hello, World!'-style program for the given language and text."""
