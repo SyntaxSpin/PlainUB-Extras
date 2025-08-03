@@ -46,12 +46,13 @@ async def make_qr_handler(bot: BOT, message: Message):
 
         text_caption = f"Your QR code"
 
-        await bot.send_photo(
-            chat_id=message.chat.id,
-            photo=output_path,
-            caption=text_caption,
-            reply_parameters = ReplyParameters(message_id=message.replied.id)
-        )
+        if message.replied:
+            await bot.send_photo(
+                  chat_id=message.chat.id,
+                  photo=output_path,
+                  caption=text_caption,
+                  reply_parameters = ReplyParameters(message_id=message.replied.id)
+            )
         
         await progress_msg.delete()
         await message.delete()
