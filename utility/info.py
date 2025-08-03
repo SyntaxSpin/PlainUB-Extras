@@ -51,8 +51,8 @@ async def format_user_info(user: User) -> str:
     if user.dc_id:
         info_lines.append(f"• <b>Data Center:</b> {user.dc_id}")
     try:
-        common_chats_count = len(await target_user.get_common_chats())
-        info_lines.append(f"• <b>Common Groups:</b> {common_chats_count}")
+        common_chats = await user.get_common_chats()
+        info_lines.append(f"• <b>Common Groups:</b> {len(common_chats)}")
     except Exception:
         pass
 
@@ -88,44 +88,30 @@ async def format_chat_info(chat: Chat) -> str:
 
 @bot.add_cmd(cmd=["info", "whois"])
 async def info_handler(bot: BOT, message: Message):
-    """
-    CMD: INFO
-    INFO: Gets detailed information about a user, bot, group, or channel.
-    USAGE:
-        .info (gets info about yourself)
-        .info [user_id/@username/chat_id]
-        .info (in reply to a message)
-    ALIASES: .whois
-    """
     progress: Message = await message.reply("<code>Fetching information...</code>")
 
     target_identifier = None
     if message.input:
         target_identifier = message.input.strip()
-    elif message.replied:
-        target_identifier = message.replied.from_user.id if message.replied.from_user else message.replied.chat.id
+    elif message.replied and message.replied.from_user:
+        target_identifier = message.replied.from_user.id
     else:
         target_identifier = "me"
 
     final_text = ""
     
     try:
-        target_chat = await bot.get_chat(target_identifier)
-        
-        if target_chat.type == ChatType.PRIVATE:
-            target_user = await bot.get_users(target_chat.id)
-            final_text = await format_user_info(target_user)
-        else:
+        target_user = await bot.get_users(target_identifier)
+        final_text = await format_user_info(target_user)
+    except Exception:
+        try:
+            target_chat = await bot.get_chat(target_identifier)
             final_text = await format_chat_info(target_chat)
-
-    except Exception as e:
-        return await progress.edit(
-            f"<b>Error:</b> Could not find the specified entity.\n<code>{safe_escape(str(e))}</code>"
-        )
+        except Exception as e:
+            return await progress.edit(f"<b>Error:</b> Could not find the specified entity.\n<code>{safe_escape(str(e))}</code>")
     
     await progress.edit(
         final_text,
         link_preview_options=LinkPreviewOptions(is_disabled=True)
     )
-
     await message.delete()
