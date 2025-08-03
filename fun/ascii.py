@@ -16,4 +16,4 @@ async def ascii(bot: BOT, message: Message):
 
     escaped_ascii_text = html.escape(ascii_text)
     
-    await message.reply(f"<pre language=ascii>~$ ascii {text}\n\n{escaped_ascii_text}</pre>", parse_mode=ParseMode.HTML)
+    await message.reply(f"<b>Your ASCII art:</b>\n<pre language=ascii>{escaped_ascii_text}</pre>", parse_mode=ParseMode.HTML)
