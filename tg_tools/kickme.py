@@ -26,7 +26,7 @@ async def leave_chat_handler(bot: BOT, message: Message):
             await bot.leave_chat(chat_id_to_leave)
             
             confirmation_msg = await message.reply(
-                f"✅ Successfully left chat: <code>{html.escape(str(chat_id_to_leave))}</code>"
+                f"Successfully left chat: <code>{html.escape(str(chat_id_to_leave))}</code>"
             )
             await asyncio.sleep(8)
             await confirmation_msg.delete()
