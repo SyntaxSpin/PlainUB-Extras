@@ -35,6 +35,7 @@ async def leave_chat_handler(bot: BOT, message: Message):
         else:
             chat_id = message.chat.id
             await message.delete()
+            await asyncio.sleep(1)
             await bot.leave_chat(chat_id)
 
     except Exception as e:
