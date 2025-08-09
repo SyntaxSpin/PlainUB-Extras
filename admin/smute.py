@@ -1,6 +1,6 @@
-from pyrogram.types import ChatPermissions, User
+from pyrogram.types import Message, User, ChatPermissions
 
-from app import BOT, Message
+from app import BOT, bot
 
 @bot.add_cmd(cmd="smute")
 async def silent_mute_handler(bot: BOT, message: Message):
