@@ -10,7 +10,7 @@ Repository **PlainUB-Extras** is a collection of additional modules and features
 2. In your `config.env` file, add or modify the following line to point to your fork or this repository directly:
 
    ```env
-   EXTRA_MODULES_REPO=https://github.com/R0Xofficial/PlainUBScripts
+   EXTRA_MODULES_REPO=https://github.com/R0Xofficial/PlainUB-Extras
    ```
 
 3. Deploy or restart your bot. The modules will be automatically loaded from the external repository.
@@ -42,7 +42,7 @@ If you're deploying manually (without `EXTRA_MODULES_REPO`), you can also instal
 3. Clone this repository into the `modules` folder:
 
    ```bash
-   git clone https://github.com/R0Xofficial/PlainUBScripts modules
+   git clone https://github.com/R0Xofficial/PlainUB-Extras modules
    ```
 
 4. Restart your bot to load the modules.
