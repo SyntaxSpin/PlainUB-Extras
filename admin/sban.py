@@ -1,6 +1,6 @@
-from pyrogram.types import User
+from pyrogram.types import Message, User
 
-from app import BOT, Message
+from app import BOT, bot
 
 @bot.add_cmd(cmd="sban")
 async def silent_ban_handler(bot: BOT, message: Message) -> None:
