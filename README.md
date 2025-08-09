@@ -1,6 +1,6 @@
 # Plain-UB Scripts
 
-Repository **PlainUBScripts** is a collection of additional modules and features designed for use with [Plain-UB](https://github.com/thedragonsinn/plain-ub) — A simple Telegram User-Bot. These scripts extend the functionality of the bot with custom commands and tools.
+Repository **PlainUBScripts** is a collection of additional modules and features designed for use with [plain-ub](https://github.com/thedragonsinn/plain-ub) — A simple Telegram User-Bot. These scripts extend the functionality of the bot with custom commands and tools.
 
 ## ⚙️ How to Use
 
