@@ -1,7 +1,7 @@
 import asyncio
-from pyrogram.types import User
+from pyrogram.types import Message, User
 
-from app import BOT, Message
+from app import BOT, bot
 
 @bot.add_cmd(cmd="skick")
 async def silent_kick_handler(bot: BOT, message: Message):
