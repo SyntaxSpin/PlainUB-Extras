@@ -1,4 +1,4 @@
-# PlainUB Extras
+# Plain-UB Extras
 
 Repository **PlainUB-Extras** is a collection of additional modules and features designed for use with [plain-ub](https://github.com/thedragonsinn/plain-ub) — A simple Telegram User-Bot. These scripts extend the functionality of the bot with custom commands and tools.
 
