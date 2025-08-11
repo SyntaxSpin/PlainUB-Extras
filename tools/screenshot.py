@@ -4,7 +4,7 @@ import asyncio
 import requests
 import time
 import base64
-from pyrogram.types import Message
+from pyrogram.types import Message, ReplyParameters
 from dotenv import load_dotenv
 
 from app import BOT, bot
@@ -67,7 +67,7 @@ async def screenshot_handler(bot: BOT, message: Message):
                 chat_id=message.chat.id,
                 photo=output_path,
                 caption=f"Screenshot of: <code>{html.escape(url)}</code>",
-                reply_to_message_id=message.id
+                reply_parameters=ReplyParameters(message_id=message.id)
             )
             await progress_msg.delete()
             await message.delete()
