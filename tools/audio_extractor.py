@@ -1,6 +1,7 @@
 import os
 import html
 import asyncio
+import shutil
 from pyrogram.types import Message
 
 from app import BOT, bot
@@ -25,10 +26,11 @@ async def run_command(command: str) -> tuple[str, str, int]:
 @bot.add_cmd(cmd=["getaudio", "geta"])
 async def extract_audio_handler(bot: BOT, message: Message):
     """
-    CMD: GETAUDIO / GETA
+    CMD: GETAUDIO
     INFO: Extracts the audio track from a replied-to video file.
     USAGE:
         .getaudio (in reply to a video)
+    ALIASES: .geta
     """
     replied_msg = message.replied
     
@@ -54,7 +56,6 @@ async def extract_audio_handler(bot: BOT, message: Message):
         audio_path = os.path.join(TEMP_DIR, f"{base}.mp3")
         
         command = f'ffmpeg -i "{video_path}" -vn -acodec copy -y "{audio_path}"'
-
         _, stderr, returncode = await run_command(command)
 
         if returncode != 0:
@@ -71,7 +72,6 @@ async def extract_audio_handler(bot: BOT, message: Message):
         await bot.send_audio(
             chat_id=message.chat.id,
             audio=audio_path,
-            caption=f"Audio extracted from: <code>{html.escape(os.path.basename(video_path))}</code>",
             reply_to_message_id=replied_msg.id
         )
         
