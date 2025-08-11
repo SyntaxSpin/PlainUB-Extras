@@ -4,10 +4,17 @@ import asyncio
 import requests
 import time
 import base64
-from urllib.parse import urlencode
 from pyrogram.types import Message
+from dotenv import load_dotenv
 
 from app import BOT, bot
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+MODULES_DIR = os.path.dirname(SCRIPT_DIR)
+ENV_PATH = os.path.join(MODULES_DIR, "extra_config.env")
+load_dotenv(dotenv_path=ENV_PATH)
+
+PAGESPEED_API_KEY = os.getenv("PAGESPEED_API_KEY")
 
 TEMP_DIR = "temp_screenshots/"
 os.makedirs(TEMP_DIR, exist_ok=True)
@@ -15,19 +22,27 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 
 @bot.add_cmd(cmd=["screenshot", "ss"])
 async def screenshot_handler(bot: BOT, message: Message):
+    if not PAGESPEED_API_KEY:
+        await message.reply(
+            "<b>PAGESPEED_API_KEY is not configured in extra_config.env.</b>",
+            del_in=15
+        )
+        return
+
     if not message.input:
-        return await message.reply("<b>Usage:</b> <code>.screenshot [url]</code>")
+        await message.reply("<b>Usage:</b> .screenshot [url]", del_in=8)
+        return
 
     url = message.input.strip()
     if not url.startswith(("http://", "https://")):
         url = "http://" + url
 
-    progress_msg = await message.reply(f"<code>Taking screenshot...</code>")
+    progress_msg = await message.reply(f"<code>Taking screenshot</code>...")
     
     output_path = os.path.join(TEMP_DIR, f"screenshot_{int(time.time())}.jpeg")
 
     try:
-        api_endpoint = f"https://www.googleapis.com/pagespeedonline/v5/runPagespeed?screenshot=true&strategy=desktop&url={url}"
+        api_endpoint = f"https://www.googleapis.com/pagespeedonline/v5/runPagespeed?screenshot=true&strategy=desktop&url={url}&key={PAGESPEED_API_KEY}"
 
         def do_request():
             return requests.get(api_endpoint, timeout=60)
@@ -40,7 +55,7 @@ async def screenshot_handler(bot: BOT, message: Message):
         screenshot_data = result.get("lighthouseResult", {}).get("audits", {}).get("final-screenshot", {}).get("details", {}).get("data")
         
         if not screenshot_data:
-            raise ValueError("Google API did not return a screenshot. The site may be inaccessible or too slow.")
+            raise ValueError("Google API did not return a screenshot for this URL.")
 
         image_data = base64.b64decode(screenshot_data.replace("data:image/jpeg;base64,", ""))
 
@@ -59,8 +74,12 @@ async def screenshot_handler(bot: BOT, message: Message):
         else:
             raise FileNotFoundError("Screenshot file was not created.")
 
+    except requests.exceptions.HTTPError as e:
+        error_message = f"<b>API Error ({e.response.status_code}):</b>\n<code>{html.escape(e.response.text)}</code>"
+        await progress_msg.edit(error_message, del_in=15)
+        
     except Exception as e:
-        await progress_msg.edit(f"<b>Error:</b> <code>{html.escape(str(e))}</code>", del_in=8)
+        await progress_msg.edit(f"<b>Error:</b> <code>{html.escape(str(e))}</code>", del_in=10)
     finally:
         if os.path.exists(output_path):
             os.remove(output_path)
