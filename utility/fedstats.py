@@ -98,7 +98,7 @@ async def fed_stat_handler(bot: BOT, message: Message):
     try:
         user_to_check: User = await bot.get_users(target_identifier)
     except Exception as e:
-        return await progress.edit(f"<b>Error:</b> Could not find the specified user.\n<code>{e}</code>")
+        return await progress.edit(f"<b>Error:</b> Could not find the specified user.\n<code>{e}</code>", del_in=8)
 
     tasks = [query_single_bot(bot, bot_id, user_to_check) for bot_id in FED_BOTS_TO_QUERY]
     all_results = await asyncio.gather(*tasks)
