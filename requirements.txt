@@ -9,3 +9,5 @@ Pillow
 python-dotenv
 qrcode
 pyzbar
+numpy
+scipy
