@@ -2,7 +2,7 @@ import os
 import html
 import asyncio
 import shutil
-from pyrogram.types import Message
+from pyrogram.types import Message, ReplyParameters
 
 from app import BOT, bot
 
@@ -72,7 +72,7 @@ async def extract_audio_handler(bot: BOT, message: Message):
         await bot.send_audio(
             chat_id=message.chat.id,
             audio=audio_path,
-            reply_to_message_id=replied_msg.id
+            reply_parameters = ReplyParameters(message_id=replied_msg.id)
         )
         
         await progress_msg.delete()
