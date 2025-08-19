@@ -17,8 +17,7 @@ async def pfp_handler(bot: BOT, message: Message):
     """
     target_entity: User | Chat = None
     target_id = None
-    target_name = "their"
-
+    
     try:
         if message.input:
             identifier = message.input.strip()
@@ -40,12 +39,19 @@ async def pfp_handler(bot: BOT, message: Message):
             raise ValueError("Could not identify the target.")
 
         target_id = target_entity.id
-        target_name = getattr(target_entity, 'first_name', getattr(target_entity, 'title', 'their'))
-
+        
+        if isinstance(target_entity, User):
+            target_name = target_entity.first_name
+        else:
+            target_name = target_entity.title
+        
+        if not target_name:
+            target_name = "their"
+            
     except Exception as e:
         return await message.reply(f"Could not find the specified user or chat.\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
 
-    progress_message = await message.reply(f"<code>Fetching {target_name}'s profile photo...</code>")
+    progress_message = await message.reply(f"<code>Fetching {html.escape(target_name)}'s profile photo...</code>")
 
     try:
         media_sent = False
