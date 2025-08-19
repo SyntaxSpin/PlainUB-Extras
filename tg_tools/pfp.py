@@ -1,5 +1,5 @@
 import html
-from pyrogram.types import Message, User, ReplyParameters
+from pyrogram.types import Message, User, Chat, ReplyParameters
 
 from app import BOT, bot
 
@@ -9,31 +9,49 @@ ERROR_VISIBLE_DURATION = 8
 async def pfp_handler(bot: BOT, message: Message):
     """
     CMD: PFP
-    INFO: Fetches a user's current profile picture (or video thumbnail).
+    INFO: Fetches the current profile picture of a user, group, or channel.
     USAGE:
         .pfp (on yourself)
-        .pfp [user_id/username]
+        .pfp [user_id/username/chat_id]
         .pfp (in reply to a user)
     """
-    target_user: User = None
+    target_entity: User | Chat = None
+    target_id = None
+    target_name = "their"
 
-    if message.input:
-        try:
-            target_user = await bot.get_users(message.input)
-        except Exception:
-            return await message.reply("User not found.", del_in=ERROR_VISIBLE_DURATION)
-    elif message.replied:
-        target_user = message.replied.from_user
-    else:
-        target_user = message.from_user
+    try:
+        if message.input:
+            identifier = message.input.strip()
+            try:
+                target_entity = await bot.get_users(identifier)
+            except Exception:
+                target_entity = await bot.get_chat(identifier)
 
-    progress_message = await message.reply(f"<code>Fetching {target_user.first_name} profile photo...</code>")
+        elif message.replied:
+            if message.replied.from_user:
+                target_entity = message.replied.from_user
+            else:
+                target_entity = message.replied.sender_chat
+
+        else:
+            target_entity = message.from_user
+            
+        if not target_entity:
+            raise ValueError("Could not identify the target.")
+
+        target_id = target_entity.id
+        target_name = getattr(target_entity, 'first_name', getattr(target_entity, 'title', 'their'))
+
+    except Exception as e:
+        return await message.reply(f"Could not find the specified user or chat.\n<code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
+
+    progress_message = await message.reply(f"<code>Fetching {target_name}'s profile photo...</code>")
 
     try:
         media_sent = False
-        async for photo in bot.get_chat_photos(target_user.id, limit=1):
+        async for photo in bot.get_chat_photos(target_id, limit=1):
             
-            caption_text = f"{target_user.mention} profile photo."
+            caption_text = f"{target_entity.mention}'s profile photo."
             
             await bot.send_photo(
                 chat_id=message.chat.id,
@@ -46,7 +64,7 @@ async def pfp_handler(bot: BOT, message: Message):
             break
         
         if not media_sent:
-            return await progress_message.edit("This user has no profile photo.", del_in=ERROR_VISIBLE_DURATION)
+            return await progress_message.edit("This entity has no profile photo.", del_in=ERROR_VISIBLE_DURATION)
 
         await progress_message.delete()
         await message.delete()
