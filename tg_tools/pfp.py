@@ -46,7 +46,7 @@ async def pfp_handler(bot: BOT, message: Message):
             break
         
         if not media_sent:
-            return await message.reply("This user has no profile photo.", del_in=ERROR_VISIBLE_DURATION)
+            return await progress_message.edit("This user has no profile photo.", del_in=ERROR_VISIBLE_DURATION)
 
         await progress_message.delete()
         await message.delete()
