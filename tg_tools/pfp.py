@@ -51,7 +51,10 @@ async def pfp_handler(bot: BOT, message: Message):
         media_sent = False
         async for photo in bot.get_chat_photos(target_id, limit=1):
             
-            caption_text = f"{target_entity.mention}'s profile photo."
+            if isinstance(target_entity, User):
+                caption_text = f"{target_entity.mention}'s profile photo."
+            else:
+                caption_text = f"Profile photo of <b>{html.escape(target_entity.title)}</b>."
             
             await bot.send_photo(
                 chat_id=message.chat.id,
