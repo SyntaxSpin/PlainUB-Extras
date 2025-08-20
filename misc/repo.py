@@ -33,7 +33,7 @@ def fetch_repo_data_sync() -> dict:
         "last_commit_date": pushed_at,
     }
 
-@bot.add_cmd(cmd=["repo", "mods"])
+@bot.add_cmd(cmd=["modrepo", "mods"])
 async def repo_handler(bot: BOT, message: Message):
     """
     CMD: REPO / MODS
