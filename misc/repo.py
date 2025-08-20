@@ -47,10 +47,10 @@ async def repo_handler(bot: BOT, message: Message):
         caption = (
             f"<a href='{REPO_URL}'><b>PlainUB-Extras</b></a>, additional modules and features designed for use with "
             f"<a href='{PLAIN_UB_URL}'>plain-ub</a>.\n\n"
-            f"› <b>Stars:</b> <code>{repo_data['stars']}</code>\n"
-            f"› <b>Forks:</b> <code>{repo_data['forks']}</code>\n"
-            f"› <b>Open Issues:</b> <code>{repo_data['issues']}</code>\n"
-            f"› <b>Last Commit:</b> <code>{repo_data['last_commit_date']}</code>"
+            f"› <b>Stars           :</b> <code>{repo_data['stars']}</code>\n"
+            f"› <b>Forks           :</b> <code>{repo_data['forks']}</code>\n"
+            f"› <b>Open Issues     :</b> <code>{repo_data['issues']}</code>\n"
+            f"› <b>Last Commit     :</b> <code>{repo_data['last_commit_date']}</code>"
         )
 
         if not os.path.exists(BACKGROUND_IMAGE_PATH):
