@@ -36,10 +36,10 @@ def fetch_repo_data_sync() -> dict:
 @bot.add_cmd(cmd=["modrepo", "mods"])
 async def repo_handler(bot: BOT, message: Message):
     """
-    CMD: REPO / MODS
+    CMD: MODREPO / MODS
     INFO: Shows an info card for the PlainUB-Extras repository.
     USAGE:
-        .repo
+        .mods
     """
     progress_msg = await message.reply("<code>Fetching repository information...</code>")
     
