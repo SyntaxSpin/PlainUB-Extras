@@ -17,7 +17,7 @@ PLAIN_UB_URL = "https://github.com/thedragonsinn/plain-ub"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODULES_DIR = os.path.dirname(SCRIPT_DIR)
 BOT_ROOT = os.path.dirname(os.path.dirname(MODULES_DIR))
-BACKGROUND_IMAGE_PATH = os.path.join(UBOT_DIR, "assets", "dark.png")
+BACKGROUND_IMAGE_PATH = os.path.join(BOT_ROOT, "assets", "dark.png")
 
 def fetch_repo_data_sync() -> dict:
     response = requests.get(REPO_API_URL, timeout=10)
