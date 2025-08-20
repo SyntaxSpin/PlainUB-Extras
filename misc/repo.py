@@ -65,7 +65,6 @@ async def repo_handler(bot: BOT, message: Message):
             photo=BACKGROUND_IMAGE_PATH,
             caption=caption,
             reply_parameters=ReplyParameters(message_id=message.id),
-            link_preview_options=LinkPreviewOptions(is_disabled=True)
         )
         
         await progress_msg.delete()
