@@ -15,7 +15,7 @@ async def leave_chat_handler(bot: BOT, message: Message):
     INFO: Leaves a chat or channel.
     USAGE:
         .leave (leaves the current chat)
-        .leave [chat_id/@username/link] (leaves a specific chat)
+        .leave [ID/@username/link] (leaves a specific chat)
     """
     
     try:
