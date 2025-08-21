@@ -11,23 +11,27 @@ async def _delayed_leave(chat_id: int | str):
 @bot.add_cmd(cmd=["leave", "kickme"])
 async def leave_chat_handler(bot: BOT, message: Message):
     """
+
     CMD: LEAVE / KICKME
     INFO: Leaves a chat or channel.
     USAGE:
         .leave (leaves the current chat)
-        .leave [chat_id] (leaves a specific chat)
+        .leave [chat_id/@username/link] (leaves a specific chat)
     """
     
     try:
         if message.input:
-            chat_id_to_leave = message.input.strip()
+            chat_identifier = message.input.strip()
             
-            try:
-                chat_id_to_leave = int(chat_id_to_leave)
-            except ValueError:
-                pass
+            if "t.me/" in chat_identifier:
+                chat_identifier = chat_identifier.split('/')[-1]
 
-            await bot.leave_chat(chat_id_to_leave)
+            try:
+                chat_identifier_for_api = int(chat_identifier)
+            except ValueError:
+                chat_identifier_for_api = chat_identifier
+
+            await bot.leave_chat(chat_identifier_for_api)
             
             confirmation_msg = await message.reply(
                 f"<code>Successfully left</code>"
