@@ -48,7 +48,7 @@ async def repo_handler(bot: BOT, message: Message):
         
         caption = (
             f"<a href='{REPO_URL}'><b>PlainUB-Extras</b></a>, additional modules and features designed for use with "
-            f"<a href='{PLAIN_UB_URL}'>plain-ub</a>.\n\n"
+            f"<a href='{PLAIN_UB_URL}'>Plain-UB</a>.\n\n"
             f" › Stars                : <code>{repo_data['stars']}</code>\n"
             f" › Forks               : <code>{repo_data['forks']}</code>\n"
             f" › Open Issues   : <code>{repo_data['issues']}</code>\n"
