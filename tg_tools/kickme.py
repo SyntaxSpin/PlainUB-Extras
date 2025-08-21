@@ -11,7 +11,6 @@ async def _delayed_leave(chat_id: int | str):
 @bot.add_cmd(cmd=["leave", "kickme"])
 async def leave_chat_handler(bot: BOT, message: Message):
     """
-
     CMD: LEAVE / KICKME
     INFO: Leaves a chat or channel.
     USAGE:
