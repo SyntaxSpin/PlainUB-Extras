@@ -72,8 +72,7 @@ async def format_chat_info(chat: Chat, is_full: bool) -> tuple[str, str | None]:
 
 @bot.add_cmd(cmd=["cinfo", "chatinfo"])
 async def chat_info_handler(bot: BOT, message: Message):
-    await message.reply("<code>Fetching chat information...</code>")
-    progress_msg = message
+    progress_msg = await message.reply("<code>Fetching chat information...</code>")
 
     is_full_mode = "-full" in message.text.split()
     target_identifier = message.input.replace("-full", "").strip() if message.input else None
@@ -83,7 +82,6 @@ async def chat_info_handler(bot: BOT, message: Message):
     elif "t.me/" in target_identifier:
         target_identifier = target_identifier.split('/')[-1]
 
-    final_text, photo_id = "", None
     try:
         target_chat = await bot.get_chat(target_identifier)
         if target_chat.type == ChatType.PRIVATE:
@@ -91,27 +89,29 @@ async def chat_info_handler(bot: BOT, message: Message):
         
         final_text, photo_id = await format_chat_info(target_chat, is_full_mode)
 
-    except Exception as e:
-        return await progress_msg.edit(f"<b>Error:</b> Could not find the specified chat.\n<code>{safe_escape(str(e))}</code>", del_in=10)
-    
-    if photo_id:
-        photo_path = ""
-        try:
-            os.makedirs(TEMP_CINFO_DIR, exist_ok=True)
-            photo_path = await bot.download_media(photo_id, file_name=TEMP_CINFO_DIR)
-            
-            await bot.send_photo(
-                chat_id=message.chat.id,
-                photo=photo_path,
-                caption=final_text,
-                reply_parameters=ReplyParameters(message_id=message.id)
+        if photo_id:
+            photo_path = ""
+            try:
+                os.makedirs(TEMP_CINFO_DIR, exist_ok=True)
+                photo_path = await bot.download_media(photo_id, file_name=TEMP_CINFO_DIR)
+                
+                await bot.send_photo(
+                    chat_id=message.chat.id,
+                    photo=photo_path,
+                    caption=final_text,
+                    reply_parameters=ReplyParameters(message_id=message.id)
+                )
+                await progress_msg.delete()
+            finally:
+                if os.path.exists(photo_path):
+                    shutil.rmtree(TEMP_CINFO_DIR, ignore_errors=True)
+        else:
+            await progress_msg.edit(
+                final_text,
+                link_preview_options=LinkPreviewOptions(is_disabled=True)
             )
-            await progress_msg.delete()
-        finally:
-            if os.path.exists(photo_path):
-                shutil.rmtree(TEMP_CINFO_DIR, ignore_errors=True)
-    else:
-        await progress_msg.edit(
-            final_text,
-            link_preview_options=LinkPreviewOptions(is_disabled=True)
-        )
+        
+        await message.delete()
+
+    except Exception as e:
+        await progress_msg.edit(f"<b>Error:</b> Could not find the specified chat.\n<code>{safe_escape(str(e))}</code>", del_in=10)
