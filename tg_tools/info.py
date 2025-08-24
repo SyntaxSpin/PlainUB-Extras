@@ -69,7 +69,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
                         perm_list = [("– Manage Chat", perms.can_manage_chat), ("– Delete Messages", perms.can_delete_messages), ("– Manage Video Chats", perms.can_manage_video_chats), ("– Restrict Members", perms.can_restrict_members), ("– Change Info", perms.can_change_info), ("– Invite Users", perms.can_invite_users), ("– Pin Messages", perms.can_pin_messages), ("– Post Stories", perms.can_post_stories), ("– Edit Stories", perms.can_edit_stories), ("– Delete Stories", perms.can_delete_stories)]
                         granted_perms = [text for text, has_perm in perm_list if has_perm]
                         if granted_perms: group_details.append("• <b>Permissions:</b>\n" + "\n".join(granted_perms))
-                    info_lines.append(f"<blockquote>{'\n'.join(group_details)}</blockquote>")
+                    info_lines.append(f"<blockquote expandable>{'\n'.join(group_details)}</blockquote>")
             except Exception: pass
             
         info_lines.append(f"\n🔗 <b>Profile Link:</b> <a href='tg://user?id={user.id}'>Click Here</a>")
