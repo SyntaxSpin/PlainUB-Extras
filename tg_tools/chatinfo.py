@@ -65,15 +65,15 @@ async def format_chat_info(chat: Chat, is_full: bool) -> tuple[str, str | None]:
         else:
             private_id = str(chat.id).replace("-100", "")
             link = f"https://t.me/c/{private_id}"
-
         info_lines.append(f"Chat link: <a href='{link}'>link</a>")
 
-    photo_id = chat.photo.big_file_id if chat.photo else None
+    photo_id = chat.photo.big_file_id if is_full and chat.photo else None
     return "\n".join(info_lines), photo_id
 
 @bot.add_cmd(cmd=["cinfo", "chatinfo"])
 async def chat_info_handler(bot: BOT, message: Message):
-    progress_msg = await message.reply("<code>Fetching chat information...</code>")
+    await message.edit("<code>Fetching chat information...</code>")
+    progress_msg = message
 
     is_full_mode = "-full" in message.text.split()
     target_identifier = message.input.replace("-full", "").strip() if message.input else None
@@ -94,8 +94,6 @@ async def chat_info_handler(bot: BOT, message: Message):
     except Exception as e:
         return await progress_msg.edit(f"<b>Error:</b> Could not find the specified chat.\n<code>{safe_escape(str(e))}</code>", del_in=10)
     
-    await progress_msg.delete()
-    
     if photo_id:
         photo_path = ""
         try:
@@ -108,13 +106,12 @@ async def chat_info_handler(bot: BOT, message: Message):
                 caption=final_text,
                 reply_parameters=ReplyParameters(message_id=message.id)
             )
+            await progress_msg.delete()
         finally:
             if os.path.exists(photo_path):
                 shutil.rmtree(TEMP_CINFO_DIR, ignore_errors=True)
     else:
-        await message.reply(
+        await progress_msg.edit(
             final_text,
             link_preview_options=LinkPreviewOptions(is_disabled=True)
         )
-    
-    await message.delete()
