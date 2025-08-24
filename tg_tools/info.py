@@ -75,7 +75,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
         info_lines.append(f"\n🔗 <b>Profile Link:</b> <a href='tg://user?id={user.id}'>Click Here</a>")
 
     else:
-        info_lines = ["<b>User info:</b>", f"ID: <code>{user.id}</code>", f"First Name: {safe_escape(user.first_name)}"]
+        info_lines = ["<b>👤 User info:</b>", f"ID: <code>{user.id}</code>", f"First Name: {safe_escape(user.first_name)}"]
         if user.last_name: info_lines.append(f"Last Name: {safe_escape(user.last_name)}")
         if user.username: info_lines.append(f"Username: @{user.username}")
         info_lines.append(f"User link: {user.mention('link')}")
