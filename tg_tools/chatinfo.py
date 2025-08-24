@@ -27,7 +27,7 @@ async def format_chat_info(chat: Chat, is_full: bool) -> tuple[str, str | None]:
 
         if chat.username:
             info_lines.append(f"• <b>Username:</b> @{chat.username}")
-            info_lines.append(f"• <b>Permalink:</b> <a href='https://t.me/{chat.username}'>{chat.username}</a>")
+            info_lines.append(f"• <b>Permalink:</b> <a href='https://t.me/{chat.username}'>link</a>")
         
         if chat.description:
             desc = chat.description
