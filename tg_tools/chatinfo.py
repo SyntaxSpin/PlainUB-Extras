@@ -72,7 +72,7 @@ async def format_chat_info(chat: Chat, is_full: bool) -> tuple[str, str | None]:
 
 @bot.add_cmd(cmd=["cinfo", "chatinfo"])
 async def chat_info_handler(bot: BOT, message: Message):
-    await message.edit("<code>Fetching chat information...</code>")
+    await message.reply("<code>Fetching chat information...</code>")
     progress_msg = message
 
     is_full_mode = "-full" in message.text.split()
