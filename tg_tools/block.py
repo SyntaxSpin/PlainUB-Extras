@@ -39,18 +39,18 @@ async def block_unblock_handler(bot: BOT, message: Message):
         if message.cmd == "block":
             action = bot.block_user
             log_tag = "#BLOCK"
-            action_str = "Blocked"
+            action_str = "blocked"
         else:
             action = bot.unblock_user
             log_tag = "#UNBLOCK"
-            action_str = "Unblocked"
+            action_str = "unblocked"
 
         await action(user_to_act_on.id)
         
         if LOG_CHAT:
             log_text = (
                 f"{log_tag}\n"
-                f"**User:** {user_to_act_on.mention} [`{user_to_act_on.id}`]\n"
+                f"{user_to_act_on.mention} [`{user_to_act_on.id}`] {action_str}"
             )
             try:
                 await bot.send_message(chat_id=LOG_CHAT, text=log_text, parse_mode=None)
