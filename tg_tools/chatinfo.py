@@ -52,20 +52,20 @@ async def format_chat_info(chat: Chat, is_full: bool) -> tuple[str, str | None]:
     else:
         info_lines = [
             "<b>👤 Chat info:</b>",
-            f"ID: <code>{chat.id}</code>",
-            f"Title: {safe_escape(chat.title)}",
+            f"• <b>ID:</b> <code>{chat.id}</code>",
+            f"• <b>Title:</b> {safe_escape(chat.title)}",
         ]
         if chat.username:
-            info_lines.append(f"Username: @{chat.username}")
+            info_lines.append(f"• <b>Username:</b> @{chat.username}")
         if chat.members_count:
-            info_lines.append(f"Members: {chat.members_count}")
+            info_lines.append(f"• <b>Members:</b> {chat.members_count}")
         
         if chat.username:
             link = f"https://t.me/{chat.username}"
         else:
             private_id = str(chat.id).replace("-100", "")
             link = f"https://t.me/c/{private_id}"
-        info_lines.append(f"Chat link: <a href='{link}'>link</a>")
+        info_lines.append(f"• <b>Chat link:</b> <a href='{link}'>link</a>")
 
     photo_id = chat.photo.big_file_id if is_full and chat.photo else None
     return "\n".join(info_lines), photo_id
