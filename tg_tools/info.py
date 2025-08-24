@@ -50,7 +50,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
                 if member:
                     info_lines.append("\n<b>👥 Group Info:</b>")
                     group_details = []
-                    status_map = {ChatMemberStatus.OWNER: "Creator", ChatMemberStatus.ADMINISTRATOR: "Administrator", ChatMemberStatus.MEMBER: "Member", ChatMemberStatus.RESTRICTED: "Restricted", ChatMemberStatus.LEFT: "Not in chat", ChatMemberStatus.BANNED: "Banned"}
+                    status_map = {ChatMemberStatus.OWNER: "Owner", ChatMemberStatus.ADMINISTRATOR: "Administrator", ChatMemberStatus.MEMBER: "Member", ChatMemberStatus.RESTRICTED: "Restricted", ChatMemberStatus.LEFT: "Not in chat", ChatMemberStatus.BANNED: "Banned"}
                     status_str = status_map.get(member.status, "Unknown")
                     if member.custom_title: status_str += f" (Title: {safe_escape(member.custom_title)})"
                     group_details.append(f"• <b>Status:</b> {status_str}")
