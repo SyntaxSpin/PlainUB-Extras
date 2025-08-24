@@ -39,7 +39,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
                 member = await bot.get_chat_member(message.chat.id, user.id)
                 status_map = {ChatMemberStatus.OWNER: "Owner", ChatMemberStatus.ADMINISTRATOR: "Admin"}
                 if member.status in status_map:
-                    info_lines.append(f"• <b>Role:</b> {status_map[member.status]}")
+                    info_lines.append(f"• <b>Status:</b> {status_map[member.status]}")
         except Exception: pass
 
         flags = ["Bot 🤖"] if user.is_bot else []
@@ -75,9 +75,9 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
         info_lines.append(f"\n🔗 <b>Profile Link:</b> <a href='tg://user?id={user.id}'>Click Here</a>")
 
     else:
-        info_lines = ["<b>👤 User info:</b>", f"ID: <code>{user.id}</code>", f"First Name: {safe_escape(user.first_name)}"]
-        if user.last_name: info_lines.append(f"Last Name: {safe_escape(user.last_name)}")
-        if user.username: info_lines.append(f"Username: @{user.username}")
+        info_lines = ["<b>👤 User info:</b>", f"• <b>ID:</b> <code>{user.id}</code>", f"• <b>First Name:</b> {safe_escape(user.first_name)}"]
+        if user.last_name: info_lines.append(f"• <b>Last Name:</b> {safe_escape(user.last_name)}")
+        if user.username: info_lines.append(f"• <b>Username:</b> @{user.username}")
         info_lines.append(f"User link: {user.mention('link')}")
         status_str = get_user_status(user)
         try:
@@ -87,7 +87,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
                 if member.status in status_map:
                     status_str = status_map.get(member.status)
         except Exception: pass
-        info_lines.append(f"Status: {status_str}")
+        info_lines.append(f"• <b>Status:</b> {status_str}")
 
     photo_id = full_chat_info.photo.big_file_id if is_full and full_chat_info.photo else None
     return "\n".join(info_lines), photo_id
