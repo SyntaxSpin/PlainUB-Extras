@@ -39,7 +39,7 @@ async def remote_kick_handler(bot: BOT, message: Message):
         confirmation_text = f"Kicked: {target_user.mention}\nReason: {reason}"
 
         await bot.send_message(target_chat.id, confirmation_text)
-        await message.reply(f"{action_str}: {target_user.mention}\nChat: {html.escape(target_chat.title)}\nReason: {reason}")
+        await message.reply(f"Remote Kicked: {target_user.mention}\nChat: {html.escape(target_chat.title)}\nReason: {reason}")
 
     except Exception as e:
         await message.reply(f"<b>Error:</b> <code>{html.escape(str(e))}</code>", del_in=15)
