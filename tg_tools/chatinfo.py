@@ -13,7 +13,7 @@ def safe_escape(text: str) -> str:
 
 async def format_chat_info(chat: Chat, is_full: bool) -> tuple[str, str | None]:
     if is_full:
-        info_lines = ["<b>👥 Chat Info</b>"]
+        info_lines = ["<b>👥 Chat Info:</b>"]
         info_lines.extend([
             f"• <b>Title:</b> {safe_escape(chat.title)}",
             f"• <b>ID:</b> <code>{chat.id}</code>",
