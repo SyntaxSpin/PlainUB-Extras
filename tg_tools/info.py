@@ -33,14 +33,6 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
         if user.username: info_lines.append(f"• <b>Username:</b> @{user.username}")
         if user.dc_id: info_lines.append(f"• <b>DC ID:</b> {user.dc_id}")
         if user.language_code: info_lines.append(f"• <b>Language:</b> {user.language_code}")
-        
-        try:
-            if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
-                member = await bot.get_chat_member(message.chat.id, user.id)
-                status_map = {ChatMemberStatus.OWNER: "Owner", ChatMemberStatus.ADMINISTRATOR: "Admin", ChatMemberStatus.MEMBER: "Member", ChatMemberStatus.RESTRICTED: "Restricted", ChatMemberStatus.LEFT: "Not in chat", ChatMemberStatus.BANNED: "Banned"}
-                if member.status in status_map:
-                    info_lines.append(f"• <b>Status:</b> {status_map[member.status]}")
-        except Exception: pass
 
         flags = ["Bot 🤖"] if user.is_bot else []
         if user.is_verified: flags.append("Verified ✅")
