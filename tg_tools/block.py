@@ -50,8 +50,7 @@ async def block_unblock_handler(bot: BOT, message: Message):
         if LOG_CHAT:
             log_text = (
                 f"{log_tag}\n"
-                f"**User:** {user_to_act_on.mention} (`{user_to_act_on.id}`)\n"
-                f"**Action:** User has been successfully {action_str}."
+                f"**User:** {user_to_act_on.mention} [`{user_to_act_on.id}`]\n"
             )
             try:
                 await bot.send_message(chat_id=LOG_CHAT, text=log_text, parse_mode=None)
@@ -61,16 +60,4 @@ async def block_unblock_handler(bot: BOT, message: Message):
         await message.delete()
 
     except Exception as e:
-        if LOG_CHAT:
-            log_tag = f"#{message.cmd.upper()}_ERROR"
-            log_text = (
-                f"{log_tag}\n"
-                f"**Action:** Failed to {message.cmd} user.\n"
-                f"**Reason:** ```{html.escape(str(e))}```"
-            )
-            try:
-                await bot.send_message(chat_id=LOG_CHAT, text=log_text, parse_mode=None)
-            except Exception:
-                pass
-
-        await message.reply(f"<b>Error:</b> <code>{html.escape(str(e))}</code>", del_in=10)
+        await message.reply(f"<b>Error:</b> <code>{html.escape(str(e))}</code>", del_in=ERROR_VISIBLE_DURATION)
