@@ -28,7 +28,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
     full_chat_info = await bot.get_chat(user.id)
     
     if is_full:
-        info_lines = ["<b>👤 User Info</b>"]
+        info_lines = ["<b>👤 User Info:</b>"]
         info_lines.extend([f"• <b>ID:</b> <code>{user.id}</code>", f"• <b>First Name:</b> {safe_escape(user.first_name)}"])
         if user.username: info_lines.append(f"• <b>Username:</b> @{user.username}")
         if user.dc_id: info_lines.append(f"• <b>DC ID:</b> {user.dc_id}")
@@ -37,7 +37,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
         try:
             if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
                 member = await bot.get_chat_member(message.chat.id, user.id)
-                status_map = {ChatMemberStatus.OWNER: "Owner", ChatMemberStatus.ADMINISTRATOR: "Admin"}
+                status_map = {ChatMemberStatus.OWNER: "Owner", ChatMemberStatus.ADMINISTRATOR: "Admin", ChatMemberStatus.MEMBER: "Member", ChatMemberStatus.RESTRICTED: "Restricted", ChatMemberStatus.LEFT: "Not in chat", ChatMemberStatus.BANNED: "Banned"}
                 if member.status in status_map:
                     info_lines.append(f"• <b>Status:</b> {status_map[member.status]}")
         except Exception: pass
@@ -58,7 +58,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
                 if member:
                     info_lines.append("\n<b>👥 Group Info:</b>")
                     group_details = []
-                    status_map = {ChatMemberStatus.OWNER: "Creator", ChatMemberStatus.ADMINISTRATOR: "Administrator", ChatMemberStatus.MEMBER: "Member", ChatMemberStatus.RESTRICTED: "Restricted", ChatMemberStatus.LEFT: "Left", ChatMemberStatus.BANNED: "Banned"}
+                    status_map = {ChatMemberStatus.OWNER: "Creator", ChatMemberStatus.ADMINISTRATOR: "Administrator", ChatMemberStatus.MEMBER: "Member", ChatMemberStatus.RESTRICTED: "Restricted", ChatMemberStatus.LEFT: "Not in chat", ChatMemberStatus.BANNED: "Banned"}
                     status_str = status_map.get(member.status, "Unknown")
                     if member.custom_title: status_str += f" (Title: {safe_escape(member.custom_title)})"
                     group_details.append(f"• <b>Status:</b> {status_str}")
@@ -83,7 +83,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
         try:
             if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
                 member = await bot.get_chat_member(message.chat.id, user.id)
-                status_map = {ChatMemberStatus.OWNER: "Owner", ChatMemberStatus.ADMINISTRATOR: "Admin", ChatMemberStatus.MEMBER: "Member", ChatMemberStatus.RESTRICTED: "Muted", ChatMemberStatus.LEFT: "Left", ChatMemberStatus.BANNED: "Banned"}
+                status_map = {ChatMemberStatus.OWNER: "Owner", ChatMemberStatus.ADMINISTRATOR: "Admin", ChatMemberStatus.MEMBER: "Member", ChatMemberStatus.RESTRICTED: "Restricted", ChatMemberStatus.LEFT: "Not in chat", ChatMemberStatus.BANNED: "Banned"}
                 if member.status in status_map:
                     status_str = status_map.get(member.status)
         except Exception: pass
