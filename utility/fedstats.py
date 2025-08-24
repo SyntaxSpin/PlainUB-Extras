@@ -13,6 +13,7 @@ FED_BOTS_TO_QUERY = [
     609517172,  # Rose
     1376954911,  # AstrakoBot
     885745757,  #Sophie
+    2059887769, #Odin
 ]
 
 def safe_escape(text: str) -> str:
