@@ -87,7 +87,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
 
     else:
         info_lines = [
-            "<b>User info:</b>",
+            "<b>👤 User info:</b>",
             f"ID: <code>{user.id}</code>",
             f"First Name: {safe_escape(user.first_name)}",
         ]
