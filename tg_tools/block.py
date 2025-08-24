@@ -1,0 +1,76 @@
+import os
+import html
+from dotenv import load_dotenv
+from pyrogram.types import Message, User
+
+from app import BOT, bot
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+APP_DIR = os.path.dirname(os.path.dirname(SCRIPT_DIR))
+BOT_ROOT = os.path.dirname(APP_DIR)
+
+CONFIG_ENV_PATH = os.path.join(BOT_ROOT, "config.env")
+
+if os.path.exists(CONFIG_ENV_PATH):
+    load_dotenv(dotenv_path=CONFIG_ENV_PATH)
+
+LOG_CHAT_STR = os.getenv("LOG_CHAT")
+LOG_CHAT = int(LOG_CHAT_STR) if LOG_CHAT_STR and LOG_CHAT_STR.strip() else None
+
+ERROR_VISIBLE_DURATION = 8
+
+@bot.add_cmd(cmd=["block", "unblock"])
+async def block_unblock_handler(bot: BOT, message: Message):
+    user_to_act_on: User = None
+
+    try:
+        if message.input:
+            identifier = message.input.strip()
+            user_to_act_on = await bot.get_users(identifier)
+        elif message.replied and message.replied.from_user:
+            user_to_act_on = message.replied.from_user
+        else:
+            await message.reply("<b>Usage:</b> Reply to a user or provide their ID/@username.", del_in=ERROR_VISIBLE_DURATION)
+            return
+            
+        if not user_to_act_on:
+            raise ValueError("Could not find the specified user.")
+
+        if message.cmd == "block":
+            action = bot.block_user
+            log_tag = "#BLOCK"
+            action_str = "Blocked"
+        else:
+            action = bot.unblock_user
+            log_tag = "#UNBLOCK"
+            action_str = "Unblocked"
+
+        await action(user_to_act_on.id)
+        
+        if LOG_CHAT:
+            log_text = (
+                f"{log_tag}\n"
+                f"**User:** {user_to_act_on.mention} (`{user_to_act_on.id}`)\n"
+                f"**Action:** User has been successfully {action_str}."
+            )
+            try:
+                await bot.send_message(chat_id=LOG_CHAT, text=log_text, parse_mode=None)
+            except Exception:
+                pass
+        
+        await message.delete()
+
+    except Exception as e:
+        if LOG_CHAT:
+            log_tag = f"#{message.cmd.upper()}_ERROR"
+            log_text = (
+                f"{log_tag}\n"
+                f"**Action:** Failed to {message.cmd} user.\n"
+                f"**Reason:** ```{html.escape(str(e))}```"
+            )
+            try:
+                await bot.send_message(chat_id=LOG_CHAT, text=log_text, parse_mode=None)
+            except Exception:
+                pass
+
+        await message.reply(f"<b>Error:</b> <code>{html.escape(str(e))}</code>", del_in=10)
