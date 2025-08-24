@@ -71,15 +71,14 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
         if user.last_name: info_lines.append(f"• <b>Last Name:</b> {safe_escape(user.last_name)}")
         if user.username: info_lines.append(f"• <b>Username:</b> @{user.username}")
         info_lines.append(f"• <b>Permalink:</b> {user.mention('link')}")
-        status_str = get_user_status(user)
         try:
             if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
                 member = await bot.get_chat_member(message.chat.id, user.id)
                 status_map = {ChatMemberStatus.OWNER: "Owner", ChatMemberStatus.ADMINISTRATOR: "Admin", ChatMemberStatus.MEMBER: "Member", ChatMemberStatus.RESTRICTED: "Restricted", ChatMemberStatus.LEFT: "Not in chat", ChatMemberStatus.BANNED: "Banned"}
                 if member.status in status_map:
                     status_str = status_map.get(member.status)
+                    info_lines.append(f"• <b>Status:</b> {status_str}")
         except Exception: pass
-        info_lines.append(f"• <b>Status:</b> {status_str}")
 
     photo_id = full_chat_info.photo.big_file_id if is_full and full_chat_info.photo else None
     return "\n".join(info_lines), photo_id
