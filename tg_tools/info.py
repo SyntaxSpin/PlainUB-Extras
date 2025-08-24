@@ -30,6 +30,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
     if is_full:
         info_lines = ["<b>👤 User Info:</b>"]
         info_lines.extend([f"• <b>ID:</b> <code>{user.id}</code>", f"• <b>First Name:</b> {safe_escape(user.first_name)}"])
+        if user.last_name: info_lines.append(f"• <b>Last Name:</b> {safe_escape(user.last_name)}")
         if user.username: info_lines.append(f"• <b>Username:</b> @{user.username}")
         if user.dc_id: info_lines.append(f"• <b>DC ID:</b> {user.dc_id}")
         if user.language_code: info_lines.append(f"• <b>Language:</b> {user.language_code}")
