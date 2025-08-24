@@ -94,8 +94,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
 
 @bot.add_cmd(cmd=["info", "whois"])
 async def info_handler(bot: BOT, message: Message):
-    await message.reply("<code>Fetching user information...</code>")
-    progress_msg = message
+    progress_msg = await message.reply("<code>Fetching user information...</code>")
 
     is_full_mode = "-full" in message.text.split()
     target_identifier = message.input.replace("-full", "").strip() if message.input else None
@@ -115,12 +114,23 @@ async def info_handler(bot: BOT, message: Message):
             try:
                 os.makedirs(TEMP_INFO_DIR, exist_ok=True)
                 photo_path = await bot.download_media(photo_id, file_name=TEMP_INFO_DIR)
-                await bot.send_photo(chat_id=message.chat.id, photo=photo_path, caption=final_text, reply_parameters=ReplyParameters(message_id=message.id))
+                await bot.send_photo(
+                    chat_id=message.chat.id,
+                    photo=photo_path,
+                    caption=final_text,
+                    reply_parameters=ReplyParameters(message_id=message.id)
+                )
                 await progress_msg.delete()
             finally:
-                if os.path.exists(photo_path): shutil.rmtree(TEMP_INFO_DIR, ignore_errors=True)
+                if os.path.exists(photo_path):
+                    shutil.rmtree(TEMP_INFO_DIR, ignore_errors=True)
         else:
-            await progress_msg.edit(final_text, link_preview_options=LinkPreviewOptions(is_disabled=True))
+            await progress_msg.edit(
+                final_text,
+                link_preview_options=LinkPreviewOptions(is_disabled=True)
+            )
+        
+        await message.delete()
 
     except Exception as e:
         await progress_msg.edit(f"<b>Error:</b> Could not find the specified user.\n<code>{safe_escape(str(e))}</code>", del_in=10)
