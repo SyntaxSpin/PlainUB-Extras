@@ -57,7 +57,7 @@ async def forward_info_handler(bot: BOT, message: Message):
             info_lines.append("• <b>Chat Link:</b> Not available (private)")
             
     else:
-        info_lines.append("• Could not determine the original sender.")
+        message.reply("Could not determine the original sender. Possible that the message creator has disabled profile linking for forwarded messages.")
 
     await bot.send_message(
         chat_id=message.chat.id,
