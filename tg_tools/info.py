@@ -21,6 +21,7 @@ def get_user_status(user: User) -> str:
         UserStatus.RECENTLY: "Recently",
         UserStatus.LAST_WEEK: "Within a week",
         UserStatus.LAST_MONTH: "Within a month"
+        UserStatus.LONG_AGO: "Long ago"
     }
     return status_map.get(user.status, str(user.status))
 
