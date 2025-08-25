@@ -20,7 +20,7 @@ async def weather_handler(bot: BOT, message: Message):
         return
 
     location = message.input.strip()
-    progress_msg = await message.reply(f"<code>Fetching weather...</code>")
+    progress_msg = await message.reply(f"<code>Fetching weather for {html.escape(location)}...</code>")
 
     try:
         def do_request():
@@ -57,7 +57,7 @@ async def weather_handler(bot: BOT, message: Message):
             f"<b>Now:</b> {current['weatherDesc'][0]['value']} {current['temp_C']}°C (Feels like {current['FeelsLikeC']}°C)",
             f"<b>Wind:</b> {current['windspeedKmph']} km/h from {current['winddir16Point']}",
             f"<b>Humidity:</b> {current['humidity']}%",
-            f"<b>Today's Forecast:</b> {forecast_today['maxtemperaturC']}°C / {forecast_today['mintempC']}°C, 🌧️ {chance_of_rain_today}% chance of rain.",
+            f"<b>Today's Forecast:</b> {forecast_today['maxtempC']}°C / {forecast_today['mintempC']}°C, 🌧️ {chance_of_rain_today}% chance of rain.",
             f"<b>Tomorrow:</b> {forecast_tomorrow['maxtempC']}°C / {forecast_tomorrow['mintempC']}°C"
         ]
         
