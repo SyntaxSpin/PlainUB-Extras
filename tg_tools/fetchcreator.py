@@ -1,5 +1,6 @@
 import html
 from pyrogram.types import Message, User, Chat, ReplyParameters
+from pyrogram.enums import ChatType
 
 from app import BOT, bot
 
@@ -21,7 +22,7 @@ async def forward_info_handler(bot: BOT, message: Message):
         await message.reply("The replied-to message is not a forward.", del_in=8)
         return
 
-    info_lines = ["<b>📨 Forward Origin Info:</b>"]
+    info_lines = ["<b>Forward Origin Info:</b>"]
     
     if replied_msg.forward_from:
         user: User = replied_msg.forward_from
@@ -43,7 +44,9 @@ async def forward_info_handler(bot: BOT, message: Message):
 
     elif replied_msg.forward_from_chat:
         chat: Chat = replied_msg.forward_from_chat
-        info_lines.append(f"• <b>Type:</b> {'Channel 📢' if chat.is_channel else 'Group 👥'}")
+        
+        info_lines.append(f"• <b>Type:</b> {'Channel 📢' if chat.type == ChatType.CHANNEL else 'Group 👥'}")
+        
         info_lines.append(f"• <b>ID:</b> <code>{chat.id}</code>")
         info_lines.append(f"• <b>Name:</b> {html.escape(chat.title)}")
         
