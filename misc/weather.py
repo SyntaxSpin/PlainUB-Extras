@@ -20,7 +20,7 @@ async def weather_handler(bot: BOT, message: Message):
         return
 
     location = message.input.strip()
-    progress_msg = await message.reply(f"<code>Fetching weather for {html.escape(location)}...</code>")
+    progress_msg = await message.reply(f"<code>Fetching weather...</code>")
 
     try:
         def do_request():
@@ -37,20 +37,27 @@ async def weather_handler(bot: BOT, message: Message):
             current = data['current_condition'][0]
             forecast_today = data['weather'][0]
             forecast_tomorrow = data['weather'][1]
-            city = data['nearest_area'][0]['areaName'][0]['value']
-            country = data['nearest_area'][0]['country'][0]['value']
-            region = data['nearest_area'][0]['region'][0]['value']
+            nearest_area = data['nearest_area'][0]
+            
+            city = nearest_area['areaName'][0]['value']
+            country = nearest_area['country'][0]['value']
+            region = nearest_area['region'][0]['value']
+            
             location_name = f"{city}, {region}, {country}"
+            latitude = nearest_area['latitude']
+            longitude = nearest_area['longitude']
+            
             chance_of_rain_today = forecast_today['hourly'][4]['chanceofrain']
         except (IndexError, KeyError):
             raise ValueError("Could not parse weather data. Location might be invalid.")
 
         result_lines = [
-            f"<b>Weather for:</b> <code>{html.escape(location_name)}</code>\n",
+            f"<b>Weather for:</b> <code>{html.escape(location_name)}</code>",
+            f"<b>Coords:</b> <code>{latitude}, {longitude}</code>\n",
             f"<b>Now:</b> {current['weatherDesc'][0]['value']} {current['temp_C']}°C (Feels like {current['FeelsLikeC']}°C)",
             f"<b>Wind:</b> {current['windspeedKmph']} km/h from {current['winddir16Point']}",
             f"<b>Humidity:</b> {current['humidity']}%",
-            f"<b>Today's Forecast:</b> {forecast_today['maxtempC']}°C / {forecast_today['mintempC']}°C, 🌧️ {chance_of_rain_today}% chance of rain.",
+            f"<b>Today's Forecast:</b> {forecast_today['maxtemperaturC']}°C / {forecast_today['mintempC']}°C, 🌧️ {chance_of_rain_today}% chance of rain.",
             f"<b>Tomorrow:</b> {forecast_tomorrow['maxtempC']}°C / {forecast_tomorrow['mintempC']}°C"
         ]
         
