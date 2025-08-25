@@ -1,5 +1,5 @@
 import html
-from pyrogram.types import Message, User, Chat, ReplyParameters
+from pyrogram.types import Message, User, Chat, ReplyParameters, LinkPreviewOptions
 from pyrogram.enums import ChatType
 
 from app import BOT, bot
@@ -62,7 +62,8 @@ async def forward_info_handler(bot: BOT, message: Message):
     await bot.send_message(
         chat_id=message.chat.id,
         text="\n".join(info_lines),
-        reply_parameters=ReplyParameters(message_id=replied_msg.id)
+        reply_parameters=ReplyParameters(message_id=replied_msg.id),
+        link_preview_options=LinkPreviewOptions(is_disabled=True)
     )
     
     await message.delete()
