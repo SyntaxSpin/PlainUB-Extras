@@ -20,7 +20,7 @@ async def weather_handler(bot: BOT, message: Message):
         return
 
     location = message.input.strip()
-    progress_msg = await message.reply(f"<code>Fetching weather for {html.escape(location)}...</code>")
+    progress_msg = await message.reply(f"<code>Fetching weather...</code>")
 
     try:
         def do_request():
