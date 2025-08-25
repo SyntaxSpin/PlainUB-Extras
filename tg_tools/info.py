@@ -96,8 +96,7 @@ async def info_handler(bot: BOT, message: Message):
         if message.replied and message.replied.from_user:
             target_identifier = message.replied.from_user.id
         else:
-            target_identifier = "me"
-
+            target_identifier = message.from_user.id
     try:
         target_user = await bot.get_users(target_identifier)
         final_text, photo_id = await format_user_info(target_user, is_full_mode, message)
