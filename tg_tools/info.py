@@ -20,7 +20,7 @@ def get_user_status(user: User) -> str:
         UserStatus.OFFLINE: user.last_online_date.strftime('%d %b %Y, %H:%M') if user.last_online_date else "Offline",
         UserStatus.RECENTLY: "Recently",
         UserStatus.LAST_WEEK: "Within a week",
-        UserStatus.LAST_MONTH: "Within a month"
+        UserStatus.LAST_MONTH: "Within a month",
         UserStatus.LONG_AGO: "Long ago"
     }
     return status_map.get(user.status, str(user.status))
