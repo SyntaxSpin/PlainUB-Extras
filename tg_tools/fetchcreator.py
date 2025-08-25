@@ -1,5 +1,5 @@
 import html
-from pyrogram.types import Message, User, Chat
+from pyrogram.types import Message, User, Chat, ReplyParameters
 
 from app import BOT, bot
 
@@ -21,22 +21,25 @@ async def forward_info_handler(bot: BOT, message: Message):
         await message.reply("The replied-to message is not a forward.", del_in=8)
         return
 
-    info_lines = ["<b>📩 Forward Origin Info:</b>"]
+    info_lines = ["<b>Forward Origin Info:</b>"]
     
     if replied_msg.forward_from:
         user: User = replied_msg.forward_from
-        info_lines.append(f"• <b>Type:</b> User 👤")
-        info_lines.append(f"• <b>ID:</b> <code>{user.id}</code>")
         
-        name = user.first_name
-        if user.last_name:
-            name += f" {user.last_name}"
-        info_lines.append(f"• <b>Name:</b> {html.escape(name)}")
-        
-        if user.username:
-            info_lines.append(f"• <b>Username:</b> @{user.username}")
-        
-        info_lines.append(f"• <b>Profile Link:</b> {user.mention('Click Here')}")
+        if user.is_deleted:
+            info_lines.append(f"• <b>Type:</b> Deleted Account 💀")
+            info_lines.append(f"• <b>ID:</b> <code>{user.id}</code>")
+            info_lines.append(f"• <b>Name:</b> Deleted Account")
+        else:
+            info_lines.append(f"• <b>Type:</b> User 👤")
+            info_lines.append(f"• <b>ID:</b> <code>{user.id}</code>")
+            name = user.first_name
+            if user.last_name:
+                name += f" {user.last_name}"
+            info_lines.append(f"• <b>Name:</b> {html.escape(name)}")
+            if user.username:
+                info_lines.append(f"• <b>Username:</b> @{user.username}")
+            info_lines.append(f"• <b>Profile Link:</b> {user.mention('Click Here')}")
 
     elif replied_msg.forward_from_chat:
         chat: Chat = replied_msg.forward_from_chat
@@ -49,15 +52,14 @@ async def forward_info_handler(bot: BOT, message: Message):
             info_lines.append(f"• <b>Chat Link:</b> <a href='https://t.me/{chat.username}'>Click Here</a>")
         else:
             info_lines.append("• <b>Chat Link:</b> Not available (private)")
-
-    elif replied_msg.forward_sender_name:
-        info_lines.append(f"• <b>Type:</b> Hidden User 🤫")
-        info_lines.append(f"• <b>Name:</b> {html.escape(replied_msg.forward_sender_name)}")
-        info_lines.append("• <b>ID:</b> Hidden")
-        info_lines.append("• <b>Profile Link:</b> Not available")
-        
+            
     else:
         info_lines.append("• Could not determine the original sender.")
 
-    await message.reply("\n".join(info_lines))
+    await bot.send_message(
+        chat_id=message.chat.id,
+        text="\n".join(info_lines),
+        reply_parameters=ReplyParameters(message_id=replied_msg.id)
+    )
+    
     await message.delete()
