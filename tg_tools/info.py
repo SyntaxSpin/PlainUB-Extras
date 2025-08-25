@@ -28,7 +28,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
     full_chat_info = await bot.get_chat(user.id)
     
     if is_full:
-        info_lines = ["<b>👤 User Info:</b>"]
+        info_lines = ["<b>User Info:</b>"]
         info_lines.extend([f"• <b>ID:</b> <code>{user.id}</code>", f"• <b>First Name:</b> {safe_escape(user.first_name)}"])
         if user.last_name: info_lines.append(f"• <b>Last Name:</b> {safe_escape(user.last_name)}")
         if user.username: info_lines.append(f"• <b>Username:</b> @{user.username}")
@@ -49,7 +49,7 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
             try:
                 member = await bot.get_chat_member(message.chat.id, user.id)
                 if member:
-                    info_lines.append("\n<b>👥 Group Info:</b>")
+                    info_lines.append("\n<b>Group Info:</b>")
                     group_details = []
                     status_map = {ChatMemberStatus.OWNER: "Owner", ChatMemberStatus.ADMINISTRATOR: "Administrator", ChatMemberStatus.MEMBER: "Member", ChatMemberStatus.RESTRICTED: "Restricted", ChatMemberStatus.LEFT: "Not in chat", ChatMemberStatus.BANNED: "Banned"}
                     status_str = status_map.get(member.status, "Unknown")
@@ -65,10 +65,10 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
                     info_lines.append(f"<blockquote expandable>{'\n'.join(group_details)}</blockquote>")
             except Exception: pass
             
-        info_lines.append(f"\n🔗 <b>Profile Link:</b> <a href='tg://user?id={user.id}'>Click Here</a>")
+        info_lines.append(f"\n<b>Profile Link:</b> <a href='tg://user?id={user.id}'>Click Here</a>")
 
     else:
-        info_lines = ["<b>👤 User info:</b>", f"• <b>ID:</b> <code>{user.id}</code>", f"• <b>First Name:</b> {safe_escape(user.first_name)}"]
+        info_lines = ["<b>User info:</b>", f"• <b>ID:</b> <code>{user.id}</code>", f"• <b>First Name:</b> {safe_escape(user.first_name)}"]
         if user.last_name: info_lines.append(f"• <b>Last Name:</b> {safe_escape(user.last_name)}")
         if user.username: info_lines.append(f"• <b>Username:</b> @{user.username}")
         info_lines.append(f"• <b>Permalink:</b> {user.mention('link')}")
