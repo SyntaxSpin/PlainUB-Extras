@@ -1,62 +1,74 @@
+# fdemote.py
 from app import BOT, bot
 from pyrogram import Client, types, filters
+from pyrogram.errors import UsernameInvalid, UsernameNotOccupied
 
-# The command decorator from Plain Userbot
 @bot.add_cmd(cmd=["fdemote", "feddemote"])
 async def fdemote_command(client: Client, message: types.Message):
     """
-    Demotes a user from a Rose federation.
+    Demotes a user from a Rose federation using their numeric ID.
     """
-    
-    # 1. Get the target user ID
-    target_user_id = None
+
+    user_id = None
+    target_username = None
+
+    # Check for a reply first
     if message.reply_to_message:
-        # If the command is a reply, get the ID from the replied message
-        target_user_id = message.reply_to_message.from_user.id
-        target_username = message.reply_to_message.from_user.username
-    elif len(message.command) > 1:
-        # If a username is provided in the command
-        target_username = message.command[1].strip("@")
-        # You'll need to look up the user ID from the username
-        # This can be done with Pyrogram's get_users() method, but it's
-        # more complex. For simplicity, we'll assume a username is enough
-        # to pass to Rose.
-    else:
-        await message.reply_text("Please reply to a user or provide their username.")
+        target_user = message.reply_to_message.from_user
+        if target_user:
+            user_id = target_user.id
+            target_username = target_user.username or target_user.first_name
+    
+    # If no reply, check for a username in the command
+    elif message.command and len(message.command) > 1:
+        username_or_id = message.command[1].strip()
+        
+        try:
+            # Try to get the user's numeric ID from the username
+            user_obj = await client.get_users(username_or_id)
+            user_id = user_obj.id
+            target_username = user_obj.username or user_obj.first_name
+        except (UsernameInvalid, UsernameNotOccupied):
+            # Handle cases where the username is not found or is invalid
+            await message.reply_text(f"Invalid username or user not found: `{username_or_id}`")
+            return
+        except Exception as e:
+            # General error handling
+            await message.reply_text(f"An error occurred while fetching the user: {e}")
+            return
+
+    # If we couldn't get a user ID from either a reply or a username, show help
+    if not user_id:
+        await message.reply_text("Please reply to a user or provide their username to fdemote them.")
         return
 
     # A simple check to prevent self-demotion
-    if target_user_id == message.from_user.id:
+    if user_id == message.from_user.id:
         await message.reply_text("You can't fdemote yourself.")
         return
 
     # Get the ID of the Rose bot
-    # This is a public bot, so its username is @MissRose_bot
     ROSE_BOT_USERNAME = "MissRose_bot"
 
-    # 2. Construct the command to send to Rose
-    # The format Rose expects is likely "/fdemote <user ID or username>"
-    # We will send the fdemote command with the username to be safe.
-    fdemote_command_text = f"/fdemote @{target_username}"
+    # Construct the command to send to Rose using the numeric ID
+    fdemote_command_text = f"/fdemote {user_id}"
 
-    # 3. Send the command to Rose in a private chat (DM)
-    # The 'client.send_message()' method from Pyrogram is what you need.
+    # Send the command to Rose in a private chat (DM)
     try:
-        # Use a silent message to avoid notifications
         await client.send_message(
             chat_id=ROSE_BOT_USERNAME,
             text=fdemote_command_text,
             disable_notification=True
         )
 
-        # Optional: You can try to wait for a response from Rose in that private chat,
-        # but that can be complex to implement reliably. For a simple plugin,
-        # we can just send a confirmation message.
-
-        # 4. Acknowledge to the user that the command was sent.
-        await message.reply_text(f"Sent fdemote command for @{target_username} to Rose bot. Check our PM with Rose for the result.")
+        # Acknowledge to the user that the command was sent.
+        if target_username:
+            reply_text = f"Sent fdemote command for user `{target_username}` to Rose bot. Check your PM with Rose for the result."
+        else:
+            reply_text = f"Sent fdemote command for user with ID `{user_id}` to Rose bot. Check your PM with Rose for the result."
+            
+        await message.reply_text(reply_text)
 
     except Exception as e:
-        # Handle potential errors, like if the bot can't send messages
-        # to Rose.
-        await message.reply_text(f"An error occurred: {e}")
+        # Handle potential errors, like if the bot can't send messages to Rose.
+        await message.reply_text(f"An error occurred while sending the command to Rose: {e}")
