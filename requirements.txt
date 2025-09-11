@@ -11,4 +11,3 @@ qrcode
 pyzbar
 google-genai
 numpy
-zbar
