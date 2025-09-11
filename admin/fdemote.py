@@ -5,8 +5,7 @@ from pyrogram import Client, types, filters
 from pyrogram.errors import UsernameInvalid, UsernameNotOccupied
 
 # A dictionary to temporarily store the original chat and message ID
-# for each user's command. This allows the bot to know where to quote
-# Rose's response.
+# for each user's command.
 pending_commands = {}
 
 @bot.add_cmd(cmd=["fdemote", "feddemote"])
@@ -29,7 +28,6 @@ async def fedemotion_command(client: Client, message: types.Message):
         username_or_id = message.command[1].strip()
         
         try:
-            # Pyrogram method to get a user object from a username or ID
             user_obj = await client.get_users(username_or_id)
             user_id = user_obj.id
             target_username = user_obj.username or user_obj.first_name
@@ -40,6 +38,7 @@ async def fedemotion_command(client: Client, message: types.Message):
             await message.reply_text(f"An error occurred while fetching the user: {e}")
             return
 
+    # If we couldn't get a user ID from either a reply or a username, show help
     if not user_id:
         await message.reply_text("Please reply to a user or provide their username.")
         return
@@ -49,7 +48,7 @@ async def fedemotion_command(client: Client, message: types.Message):
         await message.reply_text("You can't use this command on yourself.")
         return
 
-    # 2. Determine the correct command for Rose
+    # 2. Determine the command for Rose
     command = message.command[0].lower().replace("fed", "f")
     rose_command_text = f"/{command} {user_id}"
     
@@ -78,7 +77,6 @@ async def fedemotion_command(client: Client, message: types.Message):
         await message.reply_text(f"An error occurred while sending the command to Rose: {e}")
         del pending_commands[original_user_id]
 
-
 # 5. Listen for Rose's response
 @Client.on_message(filters.chat("MissRose_bot") & filters.private)
 async def rose_response_handler(client: Client, message: types.Message):
@@ -87,22 +85,15 @@ async def rose_response_handler(client: Client, message: types.Message):
     original group chat.
     """
     
-    # Use the username of the userbot's account to find the original command.
-    # We are listening in the private chat with Rose, and the `from_user.id` is Rose's ID, not the userbot's.
-    # The userbot's ID is what we used as the key in the `pending_commands` dictionary.
-    
-    # The userbot's ID can be accessed via `client.me.id`
     userbot_id = client.me.id
     
     if userbot_id in pending_commands:
         original_command_data = pending_commands[userbot_id]
         
         try:
-            # Get the original chat and message ID
             original_chat_id = original_command_data["chat_id"]
             original_message_id = original_command_data["message_id"]
 
-            # Quote Rose's message in the original chat
             await client.send_message(
                 chat_id=original_chat_id,
                 text=f"**Rose's response:**\n\n> {message.text}",
@@ -111,5 +102,4 @@ async def rose_response_handler(client: Client, message: types.Message):
         except Exception as e:
             print(f"Failed to quote Rose's message: {e}")
         
-        # Clean up the entry from the pending commands
         del pending_commands[userbot_id]
