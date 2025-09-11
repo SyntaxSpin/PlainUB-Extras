@@ -7,7 +7,7 @@ from pyrogram.types import Message, LinkPreviewOptions, ReplyParameters
 
 from app import BOT, bot
 
-REPO_OWNER = "R0Xofficial"
+REPO_OWNER = "Syntaxspin"
 REPO_NAME = "PlainUB-Extras"
 REPO_API_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}"
 REPO_URL = f"https://github.com/{REPO_OWNER}/{REPO_NAME}"
@@ -48,7 +48,7 @@ async def repo_handler(bot: BOT, message: Message):
         
         caption = (
             f"<a href='{REPO_URL}'><b>PlainUB-Extras</b></a>, additional modules and features designed for use with "
-            f"<a href='{PLAIN_UB_URL}'>Plain-UB</a>.\n\n"
+            f"<a href='{PLAIN_UB_URL}'>Plain-UB</a> Modded By @syntaxspin .\n\n"
             f" › Stars                : <code>{repo_data['stars']}</code>\n"
             f" › Forks               : <code>{repo_data['forks']}</code>\n"
             f" › Open Issues   : <code>{repo_data['issues']}</code>\n"
