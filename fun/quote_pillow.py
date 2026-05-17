@@ -164,14 +164,26 @@ async def quote_cmd_handler(bot: BOT, message: Message):
         
     status_msg = await message.reply("[1/3] Downloading target user's profile photo...")
     
+    temp_pfp_path = f"temp_pfp_{target_user.id}.jpg"
     pfp_stream = BytesIO()
-    if target_user.photo:
-        await bot.download_media(target_user.photo.big_file_id, file_name=pfp_stream)
-        pfp_stream.seek(0)
-    else:
-        img = Image.new('RGB', (300, 300), color='#718093')
-        img.save(pfp_stream, "JPEG")
-        pfp_stream.seek(0)
+    
+    try:
+        if target_user.photo:
+            await bot.download_media(target_user.photo.big_file_id, file_name=temp_pfp_path)
+            if os.path.exists(temp_pfp_path):
+                with open(temp_pfp_path, "rb") as f:
+                    pfp_stream.write(f.read())
+                pfp_stream.seek(0)
+                os.remove(temp_pfp_path)
+        else:
+            img = Image.new('RGB', (300, 300), color='#718093')
+            img.save(pfp_stream, "JPEG")
+            pfp_stream.seek(0)
+            
+    except Exception as download_error:
+        if os.path.exists(temp_pfp_path):
+            os.remove(temp_pfp_path)
+        return await status_msg.edit(f"Failed to fetch profile image: {str(download_error)}")
 
     await status_msg.edit("[2/3] Processing canvas and layout...")
     
@@ -192,3 +204,6 @@ async def quote_cmd_handler(bot: BOT, message: Message):
         
     except Exception as e:
         await status_msg.edit(f"Generation Failed: {str(e)}")
+    finally:
+        if os.path.exists(temp_pfp_path):
+            os.remove(temp_pfp_path)
