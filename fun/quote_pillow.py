@@ -158,7 +158,7 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     draw.text((text_start_x, author_y), f"— {author_name}", font=author_font, fill="#FF527B")
     
     output_buffer = BytesIO()
-    bg.save(output_buffer, "JPEG", quality=95)
+    bg.save(output_buffer, "JPEG", quality=80, optimize=True)
     output_buffer.seek(0)
     return output_buffer
 
@@ -251,8 +251,9 @@ async def quote_cmd_handler(bot: BOT, message: Message):
                 headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
             )
             with urllib.request.urlopen(req) as response:
-                with open(fallback_path, 'wb') as out_file:
-                    out_file.write(response.read())
+                img_data = response.read()
+                with Image.open(BytesIO(img_data)) as remote_img:
+                    remote_img.convert("RGB").save(fallback_path, "JPEG", quality=70, optimize=True)
                     
             pfp_path = fallback_path
             
