@@ -6,8 +6,8 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 from app import BOT, bot, Message
 
-FONT_DIR = "./fonts"
-SHAPE_DIR = "./shapes"
+FONT_DIR = os.path.abspath("./fonts")
+SHAPE_DIR = os.path.abspath("./shapes")
 FALLBACK_URL = "https://preview.redd.it/say-something-nice-about-homelander-v0-v1c9ju2q8u3c1.jpeg?width=1080&crop=smart&auto=webp&s=267fd4178088541c481cfe25526925e4af96a497"
 
 FONTS = {
@@ -18,8 +18,8 @@ FONTS = {
 }
 
 def clean_unicode_name(name: str) -> str:
-    """Removes special symbols, emojis, and unsupported unicode characters to prevent tofu boxes."""
-    cleaned = re.sub(r'[^\x00-\x7F]+', '', name)
+    """Removes emojis and problematic formatting characters while preserving standard alphanumeric usernames."""
+    cleaned = re.sub(r'[^\x20-\x7E]+', '', name)
     cleaned = ' '.join(cleaned.split())
     return cleaned if cleaned.strip() else "Anonymous"
 
@@ -56,14 +56,40 @@ def get_shape_mask(shape_name: str, size: int) -> Image.Image:
         draw.ellipse((0, 0, size, size), fill=255)
         return mask
 
+def get_scalable_font(font_path: str, size: int) -> ImageFont.FreeTypeFont:
+    """Attempts to load the chosen font, with reliable structural fallbacks on Linux systems to prevent tiny default text."""
+    try:
+        if font_path and os.path.exists(font_path):
+            return ImageFont.truetype(font_path, size)
+    except Exception:
+        pass
+
+    # Linux system font path targets (Debian/Ubuntu packages)
+    linux_system_fallbacks = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    ]
+    
+    for path in linux_system_fallbacks:
+        try:
+            if os.path.exists(path):
+                return ImageFont.truetype(path, size)
+        except Exception:
+            continue
+            
+    # Absolute bare minimum framework generator if everything else is stripped
+    return ImageFont.load_default()
+
 def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: str = "-ssf", shape_name: str = None) -> BytesIO:
     canvas_w, canvas_h = 1024, 576
     
     pfp = Image.open(pfp_path)
     bg = crop_to_16_9(pfp).resize((canvas_w, canvas_h), Image.Resampling.LANCZOS)
     
-    # Semi-transparent black scrim instead of blur
-    scrim = Image.new("RGBA", bg.size, (0, 0, 0, 140))
+    # Render dark transparency scrim instead of resource-heavy blur
+    scrim = Image.new("RGBA", bg.size, (0, 0, 0, 155))
     bg = Image.alpha_composite(bg.convert("RGBA"), scrim).convert("RGB")
     
     pfp_size = 240
@@ -85,22 +111,12 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     
     draw = ImageDraw.Draw(bg)
     
+    # Resolve selected custom font paths
     font_file = FONTS.get(font_flag, "google.ttf")
     font_path = os.path.join(FONT_DIR, font_file)
     
-    if not os.path.exists(font_path):
-        for fallback_flag, fallback_file in FONTS.items():
-            possible_path = os.path.join(FONT_DIR, fallback_file)
-            if os.path.exists(possible_path):
-                font_path = possible_path
-                break
-
-    try:
-        quote_font = ImageFont.truetype(font_path, 64)   
-        author_font = ImageFont.truetype(font_path, 38)  
-    except IOError:
-        quote_font = ImageFont.load_default()
-        author_font = ImageFont.load_default()
+    quote_font = get_scalable_font(font_path, 54)
+    author_font = get_scalable_font(font_path, 34)
         
     text_start_x = avatar_x + pfp_size + 60
     max_text_width = canvas_w - text_start_x - 80
@@ -111,24 +127,33 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     
     for word in words:
         current_line.append(word)
-        bbox = draw.textbbox((0, 0), ' '.join(current_line), font=quote_font)
-        if bbox[2] - bbox[0] > max_text_width:
+        try:
+            bbox = draw.textbbox((0, 0), ' '.join(current_line), font=quote_font)
+            line_w = bbox[2] - bbox[0]
+        except Exception:
+            line_w = len(' '.join(current_line)) * 28 # Approximate safe fallback width calculation
+            
+        if line_w > max_text_width:
             current_line.pop()
             if current_line:
                 lines.append(' '.join(current_line))
             current_line = [word]
+            
     if current_line:
         lines.append(' '.join(current_line))
     
-    line_height = draw.textbbox((0, 0), "A", font=quote_font)[3] + 18
+    try:
+        line_height = draw.textbbox((0, 0), "A", font=quote_font)[3] + 20
+    except Exception:
+        line_height = 70
+        
     total_text_height = (len(lines) * line_height) + 60
-    
     start_y = (canvas_h - total_text_height) // 2
     
     for i, line in enumerate(lines):
         draw.text((text_start_x, start_y + (i * line_height)), line, font=quote_font, fill="#FFFFFF")
         
-    author_y = start_y + (len(lines) * line_height) + 25
+    author_y = start_y + (len(lines) * line_height) + 20
     draw.text((text_start_x, author_y), f"— {author_name}", font=author_font, fill="#FF527B")
     
     output_buffer = BytesIO()
@@ -199,9 +224,8 @@ async def quote_cmd_handler(bot: BOT, message: Message):
             if downloaded and isinstance(downloaded, str):
                 pfp_path = downloaded
         
-        # If user has no pfp, download the custom Homelander asset
         if not pfp_path or not os.path.exists(pfp_path):
-            fallback_path = f"fallback_{getattr(target_user, 'id', 0)}.jpg"
+            fallback_path = os.path.abspath(f"fallback_{getattr(target_user, 'id', 0)}.jpg")
             
             req = urllib.request.Request(
                 FALLBACK_URL, 
