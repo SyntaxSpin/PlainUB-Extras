@@ -2,6 +2,7 @@ from app import BOT, bot, Message
 
 @bot.add_cmd(cmd="dm")
 async def dm_command(bot: BOT, message: Message):
+    """ Dm someone by reply or doing @username then writing the message """
     args = message.text.split(" ", 2)
     user = None
     text = ""
