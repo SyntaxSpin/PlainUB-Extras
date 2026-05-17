@@ -115,8 +115,9 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     return output_path
 
 
-@bot.add_cmd(cmd="qutimg")
+@bot.add_cmd(cmd=["qutimg" , "qt" , "qimg" ])
 async def quote_cmd_handler(bot: BOT, message: Message):
+    """ Quoting Someone in full image options -m : Mono , -sf : serif , -ssf : sansserif , -sfi italic , --mds : with material shape \n example command : [reply] , or .qutimg options @username text  """
     text = message.text
     if not text:
         return await message.reply("Provide arguments!")
