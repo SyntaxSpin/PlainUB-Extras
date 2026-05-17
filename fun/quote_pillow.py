@@ -1,4 +1,5 @@
 import os
+import random
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
 from app import BOT, bot, Message
@@ -44,11 +45,10 @@ def get_shape_mask(shape_name: str, size: int) -> Image.Image:
     mask_img = Image.open(BytesIO(png_bytes)).convert("RGBA")
     return mask_img.split()[-1]
 
-def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: str = "-ssf", shape_name: str = None) -> str:
+def generate_quote_image(pfp_bytes: BytesIO, author_name: str, text: str, font_flag: str = "-ssf", shape_name: str = None) -> BytesIO:
     canvas_w, canvas_h = 1024, 576
-    output_path = "quote_output.jpg"
     
-    pfp = Image.open(pfp_path)
+    pfp = Image.open(pfp_bytes)
     bg = crop_to_16_9(pfp).resize((canvas_w, canvas_h), Image.Resampling.LANCZOS)
     bg = bg.filter(ImageFilter.GaussianBlur(radius=15))
     
@@ -74,7 +74,7 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     
     draw = ImageDraw.Draw(bg)
     
-    font_file = FONTS.get(font_flag, "GoogleSans-Bold.ttf")
+    font_file = FONTS.get(font_flag, "google.ttf")
     font_path = os.path.join(FONT_DIR, font_file)
     
     try:
@@ -111,11 +111,13 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     author_y = start_y + (len(lines) * line_height) + 15
     draw.text((text_start_x, author_y), f"— {author_name}", font=author_font, fill="#FF527B")
     
-    bg.save(output_path, "JPEG", quality=95)
-    return output_path
+    output_buffer = BytesIO()
+    bg.save(output_buffer, "JPEG", quality=90)
+    output_buffer.seek(0)
+    return output_buffer
 
 
-@bot.add_cmd(cmd=["qutimg" , "qt" , "qimg" ])
+@bot.add_cmd(cmd=["qutimg", "qt", "qimg"])
 async def quote_cmd_handler(bot: BOT, message: Message):
     """ Quoting Someone in full image options -m : Mono , -sf : serif , -ssf : sansserif , -sfi italic , --mds : with material shape \n example command : [reply] , or .qutimg options @username text  """
     text = message.text
@@ -124,26 +126,32 @@ async def quote_cmd_handler(bot: BOT, message: Message):
 
     args = text.split()
     font_flag = "-ssf"
-    shape_name = None
+    use_mds = False
     quote_text_list = []
     
-    iterator = iter(args[1:])
-    for arg in iterator:
+    for arg in args[1:]:
         if arg in ["-m", "-sf", "-ssf", "-sfi"]:
             font_flag = arg
         elif arg == "--mds":
-            try:
-                shape_name = next(iterator)
-            except StopIteration:
-                shape_name = "circle"
+            use_mds = True
         elif arg.startswith("@"):
             continue
         else:
             quote_text_list.append(arg)
             
     quote_text = " ".join(quote_text_list)
-    target_user = None
     
+    shape_name = None
+    if use_mds and os.path.exists(SHAPE_DIR):
+        all_shapes = [
+            os.path.splitext(f)[0] 
+            for f in os.listdir(SHAPE_DIR) 
+            if f.lower().endswith(".svg")
+        ]
+        if all_shapes:
+            shape_name = random.choice(all_shapes)
+
+    target_user = None
     if message.reply_to_message:
         target_user = message.reply_to_message.from_user
     
@@ -154,36 +162,33 @@ async def quote_cmd_handler(bot: BOT, message: Message):
     if not full_name:
         full_name = target_user.username or "Anonymous"
         
-    pfp_path = "target_pfp.jpg"
+    status_msg = await message.reply("[1/3] Downloading target user's profile photo...")
+    
+    pfp_stream = BytesIO()
     if target_user.photo:
-        await bot.download_media(target_user.photo.big_file_id, file_name=pfp_path)
+        await bot.download_media(target_user.photo.big_file_id, file_name=pfp_stream)
+        pfp_stream.seek(0)
     else:
-        img = Image.new('RGB', (500, 500), color='#718093')
-        img.save(pfp_path)
+        img = Image.new('RGB', (300, 300), color='#718093')
+        img.save(pfp_stream, "JPEG")
+        pfp_stream.seek(0)
 
-    status_msg = await message.reply("Generating Image Quote...")
+    await status_msg.edit("[2/3] Processing canvas and layout...")
     
     try:
-        generated_img = generate_quote_image(
-            pfp_path=pfp_path,
+        final_photo_stream = generate_quote_image(
+            pfp_bytes=pfp_stream,
             author_name=full_name,
             text=quote_text if quote_text else "No text provided.",
             font_flag=font_flag,
             shape_name=shape_name
         )
         
-        if os.path.exists(generated_img):
-            with open(generated_img, "rb") as photo_file:
-                await message.reply_photo(photo=photo_file)
-            await status_msg.delete()
-        else:
-            await status_msg.edit("Failed to locate the generated image asset.")
+        await status_msg.edit("[3/3] Sending generated quote image...")
+        
+        final_photo_stream.name = "quote.jpg"
+        await message.reply_photo(photo=final_photo_stream)
+        await status_msg.delete()
         
     except Exception as e:
-        await status_msg.edit(f"Error: {str(e)}")
-        
-    finally:
-        if os.path.exists(pfp_path): 
-            os.remove(pfp_path)
-        if 'generated_img' in locals() and os.path.exists(generated_img): 
-            os.remove(generated_img)
+        await status_msg.edit(f"Generation Failed: {str(e)}")
