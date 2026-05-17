@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="a" data-name="shapes" xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <rect id="b" data-name="edge_box" width="108" height="108" fill="none"/>
+  <circle id="c" data-name="scaling_circle" cx="54" cy="54" r="52" fill="none"/>
+  <path id="d" data-name="android_arrow" d="M54,105.97c-14.57,0-18.4-11.04-23.99-20.5l-15.9-28.02c-5.36-9.02-6.64-14.54-6.64-19.27,0-14.11,10.95-25.27,23.99-25.27,11.27,0,11.27,5.58,22.54,5.58s11.27-5.58,22.54-5.58c13.03,0,23.99,11.17,23.99,25.27,0,4.73-1.28,10.25-6.64,19.27l-15.9,28.02c-5.58,9.46-9.42,20.5-23.99,20.5Z"/>
+</svg>

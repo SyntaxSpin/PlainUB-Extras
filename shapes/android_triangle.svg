@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="a" data-name="shapes" xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <rect id="b" data-name="edge_box" width="108" height="108" fill="none"/>
+  <circle id="c" data-name="scaling_circle" cx="54" cy="54" r="52" fill="none"/>
+  <path id="d" data-name="android_triangle" d="M54,2c-6.41,0-12.36,3.21-16.48,10.07L9.59,60.6c-7.78,13.74,1.38,29.3,16.03,29.3h56.77c14.65,0,23.81-15.56,16.03-29.3l-27.93-48.53c-4.13-6.86-10.08-10.07-16.48-10.07Z"/>
+</svg>
