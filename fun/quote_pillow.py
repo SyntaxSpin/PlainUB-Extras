@@ -186,6 +186,8 @@ async def safe_delete_status(status_msg):
 
 @bot.add_cmd(cmd=["qutimg", "qt", "qimg"])
 async def quote_cmd_handler(bot: BOT, message: Message):
+
+    """ Quoting Someone in full image options -m : Mono , -sf : serif , -ssf : sansserif , -sfi italic , --mds : with material shape -r : quote text from reply \n Latin Only for now \n example command : [reply] , or .qutimg options @username text"""
     text = message.text
     if not text:
         return await message.reply("Provide arguments!")
