@@ -1,12 +1,14 @@
 import os
 import random
 import re
+import urllib.request
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 from app import BOT, bot, Message
 
 FONT_DIR = "./fonts"
 SHAPE_DIR = "./shapes"
+FALLBACK_URL = "https://preview.redd.it/say-something-nice-about-homelander-v0-v1c9ju2q8u3c1.jpeg?width=1080&crop=smart&auto=webp&s=267fd4178088541c481cfe25526925e4af96a497"
 
 FONTS = {
     "-m": "jbmono.ttf",
@@ -57,15 +59,13 @@ def get_shape_mask(shape_name: str, size: int) -> Image.Image:
 def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: str = "-ssf", shape_name: str = None) -> BytesIO:
     canvas_w, canvas_h = 1024, 576
     
-    # Load and crop base image
     pfp = Image.open(pfp_path)
     bg = crop_to_16_9(pfp).resize((canvas_w, canvas_h), Image.Resampling.LANCZOS)
     
-    # Apply semi-transparent black scrim instead of blur
-    scrim = Image.new("RGBA", bg.size, (0, 0, 0, 140)) # 140/255 opacity darkness
+    # Semi-transparent black scrim instead of blur
+    scrim = Image.new("RGBA", bg.size, (0, 0, 0, 140))
     bg = Image.alpha_composite(bg.convert("RGBA"), scrim).convert("RGB")
     
-    # Render Avatar Profile Picture
     pfp_size = 240
     pfp_square = pfp.resize((pfp_size, pfp_size), Image.Resampling.LANCZOS)
     
@@ -85,12 +85,10 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     
     draw = ImageDraw.Draw(bg)
     
-    # Handle Font Assignment & Validation
     font_file = FONTS.get(font_flag, "google.ttf")
     font_path = os.path.join(FONT_DIR, font_file)
     
     if not os.path.exists(font_path):
-        # Fallback loop check to see if any local fonts exist
         for fallback_flag, fallback_file in FONTS.items():
             possible_path = os.path.join(FONT_DIR, fallback_file)
             if os.path.exists(possible_path):
@@ -98,8 +96,8 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
                 break
 
     try:
-        quote_font = ImageFont.truetype(font_path, 64)   # Significantly larger text
-        author_font = ImageFont.truetype(font_path, 38)  # Larger author font
+        quote_font = ImageFont.truetype(font_path, 64)   
+        author_font = ImageFont.truetype(font_path, 38)  
     except IOError:
         quote_font = ImageFont.load_default()
         author_font = ImageFont.load_default()
@@ -107,7 +105,6 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     text_start_x = avatar_x + pfp_size + 60
     max_text_width = canvas_w - text_start_x - 80
     
-    # Text wrapping algorithm logic
     words = text.split(' ')
     lines = []
     current_line = []
@@ -148,11 +145,10 @@ async def quote_cmd_handler(bot: BOT, message: Message):
         return await message.reply("Provide arguments!")
 
     args = text.split()
-    font_flag = "-ssf" # Default fallback font standard if none parsed
+    font_flag = "-ssf" 
     use_mds = False
     quote_text_list = []
     
-    # Detect exact flags, bypass parsing them as parts of text strings
     for arg in args[1:]:
         if arg in ["-m", "-sf", "-ssf", "-sfi"]:
             font_flag = arg
@@ -203,10 +199,18 @@ async def quote_cmd_handler(bot: BOT, message: Message):
             if downloaded and isinstance(downloaded, str):
                 pfp_path = downloaded
         
+        # If user has no pfp, download the custom Homelander asset
         if not pfp_path or not os.path.exists(pfp_path):
             fallback_path = f"fallback_{getattr(target_user, 'id', 0)}.jpg"
-            img = Image.new('RGB', (300, 300), color='#718093')
-            img.save(fallback_path, "JPEG")
+            
+            req = urllib.request.Request(
+                FALLBACK_URL, 
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+            )
+            with urllib.request.urlopen(req) as response:
+                with open(fallback_path, 'wb') as out_file:
+                    out_file.write(response.read())
+                    
             pfp_path = fallback_path
             
     except Exception as download_error:
