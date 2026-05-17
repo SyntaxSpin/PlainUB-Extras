@@ -1,13 +1,9 @@
 import os
 import random
+import re
 from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 from app import BOT, bot, Message
-
-try:
-    import cairosvg
-except ImportError:
-    cairosvg = None
 
 FONT_DIR = "./fonts"
 SHAPE_DIR = "./shapes"
@@ -18,6 +14,12 @@ FONTS = {
     "-ssf": "google.ttf",
     "-sfi": "cmitalic.ttf"
 }
+
+def clean_unicode_name(name: str) -> str:
+    """Removes special symbols, emojis, and unsupported unicode characters to prevent tofu boxes."""
+    cleaned = re.sub(r'[^\x00-\x7F]+', '', name)
+    cleaned = ' '.join(cleaned.split())
+    return cleaned if cleaned.strip() else "Anonymous"
 
 def crop_to_16_9(image: Image.Image) -> Image.Image:
     width, height = image.size
@@ -35,26 +37,35 @@ def crop_to_16_9(image: Image.Image) -> Image.Image:
 def get_shape_mask(shape_name: str, size: int) -> Image.Image:
     svg_path = os.path.join(SHAPE_DIR, f"{shape_name}.svg")
     
-    if not os.path.exists(svg_path) or not cairosvg:
+    if not os.path.exists(svg_path):
         mask = Image.new("L", (size, size), 0)
         draw = ImageDraw.Draw(mask)
         draw.ellipse((0, 0, size, size), fill=255)
         return mask
 
-    png_bytes = cairosvg.svg2png(url=svg_path, parent_width=size, parent_height=size)
-    mask_img = Image.open(BytesIO(png_bytes)).convert("RGBA")
-    return mask_img.split()[-1]
+    try:
+        import cairosvg
+        png_bytes = cairosvg.svg2png(url=svg_path, parent_width=size, parent_height=size)
+        mask_img = Image.open(BytesIO(png_bytes)).convert("RGBA")
+        return mask_img.split()[-1]
+    except Exception:
+        mask = Image.new("L", (size, size), 0)
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0, size, size), fill=255)
+        return mask
 
 def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: str = "-ssf", shape_name: str = None) -> BytesIO:
     canvas_w, canvas_h = 1024, 576
     
+    # Load and crop base image
     pfp = Image.open(pfp_path)
     bg = crop_to_16_9(pfp).resize((canvas_w, canvas_h), Image.Resampling.LANCZOS)
-    bg = bg.filter(ImageFilter.GaussianBlur(radius=15))
     
-    enhancer = ImageEnhance.Brightness(bg)
-    bg = enhancer.enhance(0.35)
+    # Apply semi-transparent black scrim instead of blur
+    scrim = Image.new("RGBA", bg.size, (0, 0, 0, 140)) # 140/255 opacity darkness
+    bg = Image.alpha_composite(bg.convert("RGBA"), scrim).convert("RGB")
     
+    # Render Avatar Profile Picture
     pfp_size = 240
     pfp_square = pfp.resize((pfp_size, pfp_size), Image.Resampling.LANCZOS)
     
@@ -62,8 +73,8 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
         mask = get_shape_mask(shape_name, pfp_size)
     else:
         mask = Image.new("L", (pfp_size, pfp_size), 0)
-        draw = ImageDraw.Draw(mask)
-        draw.ellipse((0, 0, pfp_size, pfp_size), fill=255)
+        draw_m = ImageDraw.Draw(mask)
+        draw_m.ellipse((0, 0, pfp_size, pfp_size), fill=255)
         
     avatar_pasted = Image.new("RGBA", (pfp_size, pfp_size))
     avatar_pasted.paste(pfp_square, (0, 0), mask=mask)
@@ -74,12 +85,21 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     
     draw = ImageDraw.Draw(bg)
     
+    # Handle Font Assignment & Validation
     font_file = FONTS.get(font_flag, "google.ttf")
     font_path = os.path.join(FONT_DIR, font_file)
     
+    if not os.path.exists(font_path):
+        # Fallback loop check to see if any local fonts exist
+        for fallback_flag, fallback_file in FONTS.items():
+            possible_path = os.path.join(FONT_DIR, fallback_file)
+            if os.path.exists(possible_path):
+                font_path = possible_path
+                break
+
     try:
-        quote_font = ImageFont.truetype(font_path, 48)
-        author_font = ImageFont.truetype(font_path, 32)
+        quote_font = ImageFont.truetype(font_path, 64)   # Significantly larger text
+        author_font = ImageFont.truetype(font_path, 38)  # Larger author font
     except IOError:
         quote_font = ImageFont.load_default()
         author_font = ImageFont.load_default()
@@ -87,6 +107,7 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     text_start_x = avatar_x + pfp_size + 60
     max_text_width = canvas_w - text_start_x - 80
     
+    # Text wrapping algorithm logic
     words = text.split(' ')
     lines = []
     current_line = []
@@ -102,15 +123,15 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     if current_line:
         lines.append(' '.join(current_line))
     
-    line_height = draw.textbbox((0, 0), "A", font=quote_font)[3] + 12
-    total_text_height = (len(lines) * line_height) + 50
+    line_height = draw.textbbox((0, 0), "A", font=quote_font)[3] + 18
+    total_text_height = (len(lines) * line_height) + 60
     
     start_y = (canvas_h - total_text_height) // 2
     
     for i, line in enumerate(lines):
         draw.text((text_start_x, start_y + (i * line_height)), line, font=quote_font, fill="#FFFFFF")
         
-    author_y = start_y + (len(lines) * line_height) + 20
+    author_y = start_y + (len(lines) * line_height) + 25
     draw.text((text_start_x, author_y), f"— {author_name}", font=author_font, fill="#FF527B")
     
     output_buffer = BytesIO()
@@ -127,10 +148,11 @@ async def quote_cmd_handler(bot: BOT, message: Message):
         return await message.reply("Provide arguments!")
 
     args = text.split()
-    font_flag = "-ssf"
+    font_flag = "-ssf" # Default fallback font standard if none parsed
     use_mds = False
     quote_text_list = []
     
+    # Detect exact flags, bypass parsing them as parts of text strings
     for arg in args[1:]:
         if arg in ["-m", "-sf", "-ssf", "-sfi"]:
             font_flag = arg
@@ -164,12 +186,13 @@ async def quote_cmd_handler(bot: BOT, message: Message):
         target_user = message.from_user
         
     if hasattr(target_user, 'first_name'):
-        full_name = f"{target_user.first_name or ''} {target_user.last_name or ''}".strip()
-        if not full_name:
-            full_name = target_user.username or "Anonymous"
+        raw_name = f"{target_user.first_name or ''} {target_user.last_name or ''}".strip()
+        if not raw_name:
+            raw_name = target_user.username or "Anonymous"
     else:
-        full_name = getattr(target_user, 'title', "Anonymous")
+        raw_name = getattr(target_user, 'title', "Anonymous")
         
+    full_name = clean_unicode_name(raw_name)
     status_msg = await message.reply("[1/3] Downloading target user's profile photo...")
     
     pfp_path = None
