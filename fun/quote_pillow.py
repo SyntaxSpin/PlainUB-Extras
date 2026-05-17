@@ -45,10 +45,10 @@ def get_shape_mask(shape_name: str, size: int) -> Image.Image:
     mask_img = Image.open(BytesIO(png_bytes)).convert("RGBA")
     return mask_img.split()[-1]
 
-def generate_quote_image(pfp_bytes: BytesIO, author_name: str, text: str, font_flag: str = "-ssf", shape_name: str = None) -> BytesIO:
+def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: str = "-ssf", shape_name: str = None) -> BytesIO:
     canvas_w, canvas_h = 1024, 576
     
-    pfp = Image.open(pfp_bytes)
+    pfp = Image.open(pfp_path)
     bg = crop_to_16_9(pfp).resize((canvas_w, canvas_h), Image.Resampling.LANCZOS)
     bg = bg.filter(ImageFilter.GaussianBlur(radius=15))
     
@@ -164,32 +164,27 @@ async def quote_cmd_handler(bot: BOT, message: Message):
         
     status_msg = await message.reply("[1/3] Downloading target user's profile photo...")
     
-    temp_pfp_path = f"temp_pfp_{target_user.id}.jpg"
-    pfp_stream = BytesIO()
-    
+    pfp_path = None
     try:
         if target_user.photo:
-            await bot.download_media(target_user.photo.big_file_id, file_name=temp_pfp_path)
-            if os.path.exists(temp_pfp_path):
-                with open(temp_pfp_path, "rb") as f:
-                    pfp_stream.write(f.read())
-                pfp_stream.seek(0)
-                os.remove(temp_pfp_path)
-        else:
+            downloaded = await bot.download_media(target_user.photo.big_file_id)
+            if downloaded and isinstance(downloaded, str):
+                pfp_path = downloaded
+        
+        if not pfp_path or not os.path.exists(pfp_path):
+            fallback_path = f"fallback_{target_user.id}.jpg"
             img = Image.new('RGB', (300, 300), color='#718093')
-            img.save(pfp_stream, "JPEG")
-            pfp_stream.seek(0)
+            img.save(fallback_path, "JPEG")
+            pfp_path = fallback_path
             
     except Exception as download_error:
-        if os.path.exists(temp_pfp_path):
-            os.remove(temp_pfp_path)
         return await status_msg.edit(f"Failed to fetch profile image: {str(download_error)}")
 
     await status_msg.edit("[2/3] Processing canvas and layout...")
     
     try:
         final_photo_stream = generate_quote_image(
-            pfp_bytes=pfp_stream,
+            pfp_path=pfp_path,
             author_name=full_name,
             text=quote_text if quote_text else "No text provided.",
             font_flag=font_flag,
@@ -205,5 +200,5 @@ async def quote_cmd_handler(bot: BOT, message: Message):
     except Exception as e:
         await status_msg.edit(f"Generation Failed: {str(e)}")
     finally:
-        if os.path.exists(temp_pfp_path):
-            os.remove(temp_pfp_path)
+        if pfp_path and os.path.exists(pfp_path):
+            os.remove(pfp_path)
