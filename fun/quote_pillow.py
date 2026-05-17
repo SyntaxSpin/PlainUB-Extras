@@ -78,8 +78,8 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     font_path = os.path.join(FONT_DIR, font_file)
     
     try:
-        quote_font = ImageFont.truetype(font_path, 42)
-        author_font = ImageFont.truetype(font_path, 28)
+        quote_font = ImageFont.truetype(font_path, 48)
+        author_font = ImageFont.truetype(font_path, 32)
     except IOError:
         quote_font = ImageFont.load_default()
         author_font = ImageFont.load_default()
@@ -96,30 +96,32 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
         bbox = draw.textbbox((0, 0), ' '.join(current_line), font=quote_font)
         if bbox[2] - bbox[0] > max_text_width:
             current_line.pop()
-            lines.append(' '.join(current_line))
+            if current_line:
+                lines.append(' '.join(current_line))
             current_line = [word]
-    lines.append(' '.join(current_line))
+    if current_line:
+        lines.append(' '.join(current_line))
     
-    line_height = draw.textbbox((0, 0), "A", font=quote_font)[3] + 10
-    total_text_height = (len(lines) * line_height) + 40
+    line_height = draw.textbbox((0, 0), "A", font=quote_font)[3] + 12
+    total_text_height = (len(lines) * line_height) + 50
     
     start_y = (canvas_h - total_text_height) // 2
     
     for i, line in enumerate(lines):
         draw.text((text_start_x, start_y + (i * line_height)), line, font=quote_font, fill="#FFFFFF")
         
-    author_y = start_y + (len(lines) * line_height) + 15
+    author_y = start_y + (len(lines) * line_height) + 20
     draw.text((text_start_x, author_y), f"— {author_name}", font=author_font, fill="#FF527B")
     
     output_buffer = BytesIO()
-    bg.save(output_buffer, "JPEG", quality=90)
+    bg.save(output_buffer, "JPEG", quality=95)
     output_buffer.seek(0)
     return output_buffer
 
 
 @bot.add_cmd(cmd=["qutimg", "qt", "qimg"])
 async def quote_cmd_handler(bot: BOT, message: Message):
-    """ Quoting Someone in full image options -m : Mono , -sf : serif , -ssf : sansserif , -sfi italic , --mds : with material shape \n example command : [reply] , or .qutimg options @username text  """
+    """ Quoting Someone in full image options -m : Mono , -sf : serif , -ssf : sansserif , -sfi italic , --mds : with material shape \n example command : [reply] , or .qutimg options text  """
     text = message.text
     if not text:
         return await message.reply("Provide arguments!")
@@ -153,26 +155,33 @@ async def quote_cmd_handler(bot: BOT, message: Message):
 
     target_user = None
     if message.reply_to_message:
-        target_user = message.reply_to_message.from_user
-    
+        if message.reply_to_message.from_user:
+            target_user = message.reply_to_message.from_user
+        elif message.reply_to_message.sender_chat:
+            target_user = message.reply_to_message.sender_chat
+
     if not target_user:
         target_user = message.from_user
         
-    full_name = f"{target_user.first_name or ''} {target_user.last_name or ''}".strip()
-    if not full_name:
-        full_name = target_user.username or "Anonymous"
+    if hasattr(target_user, 'first_name'):
+        full_name = f"{target_user.first_name or ''} {target_user.last_name or ''}".strip()
+        if not full_name:
+            full_name = target_user.username or "Anonymous"
+    else:
+        full_name = getattr(target_user, 'title', "Anonymous")
         
     status_msg = await message.reply("[1/3] Downloading target user's profile photo...")
     
     pfp_path = None
     try:
-        if target_user.photo:
-            downloaded = await bot.download_media(target_user.photo.big_file_id)
+        photo_obj = getattr(target_user, 'photo', None)
+        if photo_obj and hasattr(photo_obj, 'big_file_id'):
+            downloaded = await bot.download_media(photo_obj.big_file_id)
             if downloaded and isinstance(downloaded, str):
                 pfp_path = downloaded
         
         if not pfp_path or not os.path.exists(pfp_path):
-            fallback_path = f"fallback_{target_user.id}.jpg"
+            fallback_path = f"fallback_{getattr(target_user, 'id', 0)}.jpg"
             img = Image.new('RGB', (300, 300), color='#718093')
             img.save(fallback_path, "JPEG")
             pfp_path = fallback_path
