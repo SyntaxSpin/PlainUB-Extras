@@ -197,6 +197,9 @@ async def quote_cmd_handler(bot: BOT, message: Message):
     target_username = None
     quote_text_list = []
     
+    # Track if we have captured the primary user target yet
+    user_found = False
+    
     for arg in args[1:]:
         if arg in ["-m", "-sf", "-ssf", "-sfi"]:
             font_flag = arg
@@ -204,8 +207,9 @@ async def quote_cmd_handler(bot: BOT, message: Message):
             use_mds = True
         elif arg == "-r":
             use_reply_text = True
-        elif arg.startswith("@"):
+        elif arg.startswith("@") and not user_found:
             target_username = arg
+            user_found = True  # Lock it so any subsequent '@' words are kept as text
         else:
             quote_text_list.append(arg)
             
