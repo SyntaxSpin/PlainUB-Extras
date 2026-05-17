@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="a" data-name="shapes" xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <rect id="b" data-name="edge_box" width="108" height="108" fill="none"/>
+  <circle id="c" data-name="scaling_circle" cx="54" cy="54" r="52" fill="none"/>
+  <rect id="d" data-name="google_rectangle" x="3.03" y="28.52" width="101.94" height="50.97" rx="16.99" ry="16.99"/>
+</svg>

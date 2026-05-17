@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="a" data-name="shapes" xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <rect id="b" data-name="edge_box" width="108" height="108" fill="none"/>
+  <circle id="c" data-name="scaling_circle" cx="54" cy="54" r="52" fill="none"/>
+  <path id="d" data-name="rounded_square" d="M7.99,54C7.99,17.29,17.29,7.99,54,7.99s46.01,9.29,46.01,46.01-9.29,46.01-46.01,46.01S7.99,90.71,7.99,54Z"/>
+</svg>
