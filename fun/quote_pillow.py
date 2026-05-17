@@ -193,6 +193,8 @@ async def quote_cmd_handler(bot: BOT, message: Message):
     args = text.split()
     font_flag = "-ssf" 
     use_mds = False
+    use_reply_text = False
+    target_username = None
     quote_text_list = []
     
     for arg in args[1:]:
@@ -200,13 +202,20 @@ async def quote_cmd_handler(bot: BOT, message: Message):
             font_flag = arg
         elif arg == "--mds":
             use_mds = True
+        elif arg == "-r":
+            use_reply_text = True
         elif arg.startswith("@"):
-            continue
+            target_username = arg
         else:
             quote_text_list.append(arg)
             
     quote_text = " ".join(quote_text_list)
     
+    if use_reply_text and message.reply_to_message:
+        replied_text = message.reply_to_message.text or message.reply_to_message.caption
+        if replied_text:
+            quote_text = replied_text
+
     shape_name = None
     if use_mds and os.path.exists(SHAPE_DIR):
         all_shapes = [
@@ -218,7 +227,14 @@ async def quote_cmd_handler(bot: BOT, message: Message):
             shape_name = random.choice(all_shapes)
 
     target_user = None
-    if message.reply_to_message:
+    
+    if target_username:
+        try:
+            target_user = await bot.get_users(target_username)
+        except Exception:
+            pass
+
+    if not target_user and message.reply_to_message:
         if message.reply_to_message.from_user:
             target_user = message.reply_to_message.from_user
         elif message.reply_to_message.sender_chat:
