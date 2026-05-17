@@ -6,8 +6,15 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 from app import BOT, bot, Message
 
-FONT_DIR = os.path.abspath("./fonts")
-SHAPE_DIR = os.path.abspath("./shapes")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+FONT_DIR = os.path.join(SCRIPT_DIR, "fonts")
+SHAPE_DIR = os.path.join(SCRIPT_DIR, "shapes")
+
+if not os.path.exists(FONT_DIR):
+    FONT_DIR = os.path.abspath("./fonts")
+if not os.path.exists(SHAPE_DIR):
+    SHAPE_DIR = os.path.abspath("./shapes")
+
 FALLBACK_URL = "https://preview.redd.it/say-something-nice-about-homelander-v0-v1c9ju2q8u3c1.jpeg?width=1080&crop=smart&auto=webp&s=267fd4178088541c481cfe25526925e4af96a497"
 
 FONTS = {
@@ -18,7 +25,6 @@ FONTS = {
 }
 
 def clean_unicode_name(name: str) -> str:
-    """Removes emojis and problematic formatting characters while preserving standard alphanumeric usernames."""
     cleaned = re.sub(r'[^\x20-\x7E]+', '', name)
     cleaned = ' '.join(cleaned.split())
     return cleaned if cleaned.strip() else "Anonymous"
@@ -57,14 +63,12 @@ def get_shape_mask(shape_name: str, size: int) -> Image.Image:
         return mask
 
 def get_scalable_font(font_path: str, size: int) -> ImageFont.FreeTypeFont:
-    """Attempts to load the chosen font, with reliable structural fallbacks on Linux systems to prevent tiny default text."""
     try:
         if font_path and os.path.exists(font_path):
             return ImageFont.truetype(font_path, size)
     except Exception:
         pass
 
-    # Linux system font path targets (Debian/Ubuntu packages)
     linux_system_fallbacks = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
@@ -79,7 +83,6 @@ def get_scalable_font(font_path: str, size: int) -> ImageFont.FreeTypeFont:
         except Exception:
             continue
             
-    # Absolute bare minimum framework generator if everything else is stripped
     return ImageFont.load_default()
 
 def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: str = "-ssf", shape_name: str = None) -> BytesIO:
@@ -88,7 +91,6 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     pfp = Image.open(pfp_path)
     bg = crop_to_16_9(pfp).resize((canvas_w, canvas_h), Image.Resampling.LANCZOS)
     
-    # Render dark transparency scrim instead of resource-heavy blur
     scrim = Image.new("RGBA", bg.size, (0, 0, 0, 155))
     bg = Image.alpha_composite(bg.convert("RGBA"), scrim).convert("RGB")
     
@@ -111,7 +113,6 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     
     draw = ImageDraw.Draw(bg)
     
-    # Resolve selected custom font paths
     font_file = FONTS.get(font_flag, "google.ttf")
     font_path = os.path.join(FONT_DIR, font_file)
     
@@ -131,7 +132,7 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
             bbox = draw.textbbox((0, 0), ' '.join(current_line), font=quote_font)
             line_w = bbox[2] - bbox[0]
         except Exception:
-            line_w = len(' '.join(current_line)) * 28 # Approximate safe fallback width calculation
+            line_w = len(' '.join(current_line)) * 28
             
         if line_w > max_text_width:
             current_line.pop()
@@ -161,10 +162,28 @@ def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: 
     output_buffer.seek(0)
     return output_buffer
 
+async def safe_edit_status(status_msg, message: Message, new_text: str):
+    try:
+        if status_msg:
+            await status_msg.edit(new_text)
+            return status_msg
+    except Exception:
+        pass
+    try:
+        return await message.reply(new_text)
+    except Exception:
+        return None
+
+async def safe_delete_status(status_msg):
+    try:
+        if status_msg:
+            await status_msg.delete()
+    except Exception:
+        pass
+
 
 @bot.add_cmd(cmd=["qutimg", "qt", "qimg"])
 async def quote_cmd_handler(bot: BOT, message: Message):
-    """ Quoting Someone in full image options -m : Mono , -sf : serif , -ssf : sansserif , -sfi italic , --mds : with material shape \n example command : [reply] , or .qutimg options text  """
     text = message.text
     if not text:
         return await message.reply("Provide arguments!")
@@ -238,9 +257,10 @@ async def quote_cmd_handler(bot: BOT, message: Message):
             pfp_path = fallback_path
             
     except Exception as download_error:
-        return await status_msg.edit(f"Failed to fetch profile image: {str(download_error)}")
+        await safe_edit_status(status_msg, message, f"Failed to fetch profile image: {str(download_error)}")
+        return
 
-    await status_msg.edit("[2/3] Processing canvas and layout...")
+    status_msg = await safe_edit_status(status_msg, message, "[2/3] Processing canvas and layout...")
     
     try:
         final_photo_stream = generate_quote_image(
@@ -251,14 +271,14 @@ async def quote_cmd_handler(bot: BOT, message: Message):
             shape_name=shape_name
         )
         
-        await status_msg.edit("[3/3] Sending generated quote image...")
+        status_msg = await safe_edit_status(status_msg, message, "[3/3] Sending generated quote image...")
         
         final_photo_stream.name = "quote.jpg"
         await message.reply_photo(photo=final_photo_stream)
-        await status_msg.delete()
+        await safe_delete_status(status_msg)
         
     except Exception as e:
-        await status_msg.edit(f"Generation Failed: {str(e)}")
+        await safe_edit_status(status_msg, message, f"Generation Failed: {str(e)}")
     finally:
         if pfp_path and os.path.exists(pfp_path):
             os.remove(pfp_path)
