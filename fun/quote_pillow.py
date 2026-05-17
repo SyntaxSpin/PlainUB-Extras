@@ -51,7 +51,7 @@ def get_shape_mask(shape_name: str, size: int) -> Image.Image:
         import cairosvg
         png_bytes = cairosvg.svg2png(url=svg_path, parent_width=size, parent_height=size)
         mask_img = Image.open(BytesIO(png_bytes)).convert("RGBA")
-        return mask_img.split()[-1]
+        return mask_img.split()[-1].resize((size, size), Image.Resampling.NEAREST)
     except Exception:
         mask = Image.new("L", (size, size), 0)
         draw = ImageDraw.Draw(mask)
@@ -90,15 +90,15 @@ def get_scalable_font(font_path: str, size: int) -> ImageFont.FreeTypeFont:
 
 def generate_quote_image(pfp_path: str, author_name: str, text: str, font_flag: str = "-ssf", shape_name: str = None) -> BytesIO:
     canvas_w, canvas_h = 1024, 576
+    pfp_size = 240
     
     with Image.open(pfp_path) as pfp:
         bg = crop_to_16_9(pfp).resize((canvas_w, canvas_h), Image.Resampling.BILINEAR)
-        pfp_square = pfp.resize((240, 240), Image.Resampling.BILINEAR).convert("RGBA")
+        pfp_square = pfp.resize((pfp_size, pfp_size), Image.Resampling.BILINEAR).convert("RGBA")
         
         scrim = Image.new("RGBA", bg.size, (0, 0, 0, 165))
         bg = Image.alpha_composite(bg.convert("RGBA"), scrim).convert("RGB")
         
-        pfp_size = 240
         if shape_name:
             mask = get_shape_mask(shape_name, pfp_size)
         else:
