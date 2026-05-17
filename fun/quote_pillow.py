@@ -10,11 +10,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 FONT_DIR = os.path.join(SCRIPT_DIR, "fonts")
 SHAPE_DIR = os.path.join(SCRIPT_DIR, "shapes")
 
-if not os.path.exists(FONT_DIR):
-    FONT_DIR = os.path.abspath("./fonts")
-if not os.path.exists(SHAPE_DIR):
-    SHAPE_DIR = os.path.abspath("./shapes")
-
 FALLBACK_URL = "https://preview.redd.it/say-something-nice-about-homelander-v0-v1c9ju2q8u3c1.jpeg?width=1080&crop=smart&auto=webp&s=267fd4178088541c481cfe25526925e4af96a497"
 ROBOTO_FONT_URL = "https://github.com/google/fonts/raw/main/apache/roboto/Roboto-Bold.ttf"
 
