@@ -134,11 +134,15 @@ async def info_handler(bot: BOT, message: Message):
     except Exception as e:
         await progress_msg.edit(f"<b>Error:</b> Could not find the specified user.\n<code>{safe_escape(str(e))}</code>", del_in=LONG_TIMEOUT)
 
-# Special Thanks to MoonUB for inspiration
+# Special Thanks to MoonUB team for code and idea
+# Moon Userbot Organization
+# https://github.com/The-MoonTg-project/Moon-Userbot/
 @bot.add_cmd(cmd=["infop"])
 async def infop_handler(bot: BOT, message: Message):
     progress_msg = await message.reply("<code>Fetching user information...</code>")
-    target_identifier = message.input.strip() if message.input else None
+
+    target_identifier = message.input.strip() if getattr(message, "input", None) else None
+
     if not target_identifier:
         if message.replied and message.replied.from_user:
             target_identifier = message.replied.from_user.id
@@ -146,88 +150,49 @@ async def infop_handler(bot: BOT, message: Message):
             target_identifier = message.from_user.id
 
     try:
-        target_user = await bot.get_users(target_identifier)
-        full_chat_info = await bot.get_chat(target_user.id)
+        peer = await bot.resolve_peer(target_identifier)
+        response = await bot.invoke(functions.users.GetFullUser(id=peer))
 
-        username = f"@{target_user.username}" if target_user.username else "N/A"
-        name = target_user.first_name
-        if target_user.last_name:
-            name += f" {target_user.last_name}"
+        user = response.users[0]
+        full_user = response.full_user
 
-        bio = full_chat_info.bio if full_chat_info.bio else "N/A"
+        username = f"@{user.username}" if getattr(user, 'username', None) else "N/A"
+        name = getattr(user, 'first_name', '')
+        if getattr(user, 'last_name', None):
+            name += f" {user.last_name}"
+
+        bio = getattr(full_user, 'about', "N/A")
+
+        await bot.unblock_user("@creationdatebot")
+        try:
+            creation_response = await interact_with(
+                await bot.send_message("creationdatebot", f"/id {user.id}")
+            )
+            creation_date = creation_response.text
+            interact_with_to_delete.clear()
+        except Exception:
+            creation_date = "Unknown"
 
         info_text = (
             f"|=Username: {username}\n"
-            f"|-Id: {target_user.id}\n"
-            f"|-Account creation date: Unknown\n"
-            f"|-Bot: {target_user.is_bot}\n"
-            f"|-Scam: {target_user.is_scam}\n"
+            f"|-Id: {user.id}\n"
+            f"|-Account creation date: {creation_date}\n"
+            f"|-Bot: {getattr(user, 'bot', False)}\n"
+            f"|-Scam: {getattr(user, 'scam', False)}\n"
             f"|-Name: {name}\n"
-            f"|-Deleted: {target_user.is_deleted}\n"
+            f"|-Deleted: {getattr(user, 'deleted', False)}\n"
             f"|-BIO: {bio}\n"
-            f"|-Contact: {getattr(target_user, 'is_contact', False)}\n"
-            f"|-Can pin message: Unknown\n"
-            f"|-Mutual contact: {getattr(target_user, 'is_mutual_contact', False)}\n"
-            f"|-Access hash: {getattr(target_user, 'access_hash', 'Hidden')}\n"
-            f"|-Restricted: {target_user.is_restricted}\n"
-            f"|-Verified: {target_user.is_verified}\n"
-            f"|-Phone calls available: Unknown\n"
-            f"|-Phone calls private: Unknown\n"
-            f"|-Blocked: Unknown"
+            f"|-Contact: {getattr(user, 'contact', False)}\n"
+            f"|-Can pin message: {getattr(full_user, 'can_pin_message', False)}\n"
+            f"|-Mutual contact: {getattr(user, 'mutual_contact', False)}\n"
+            f"|-Access hash: {getattr(user, 'access_hash', 'Hidden')}\n"
+            f"|-Restricted: {getattr(user, 'restricted', False)}\n"
+            f"|-Verified: {getattr(user, 'verified', False)}\n"
+            f"|-Phone calls available: {getattr(full_user, 'phone_calls_available', False)}\n"
+            f"|-Phone calls private: {getattr(full_user, 'phone_calls_private', False)}\n"
+            f"|-Blocked: {getattr(full_user, 'blocked', False)}"
         )
-        @bot.add_cmd(cmd=["infop"])
-        async def infop_handler(bot: BOT, message: Message):
-            progress_msg = await message.reply("<code>Fetching user information...</code>")
 
-            target_identifier = message.input.strip() if message.input else None
-
-            if not target_identifier:
-                if message.replied and message.replied.from_user:
-                    target_identifier = message.replied.from_user.id
-                else:
-                    target_identifier = message.from_user.id
-
-            try:
-                target_user = await bot.get_users(target_identifier)
-                full_chat_info = await bot.get_chat(target_user.id)
-
-                username = f"@{target_user.username}" if target_user.username else "N/A"
-                name = target_user.first_name
-                if target_user.last_name:
-                    name += f" {target_user.last_name}"
-
-                bio = full_chat_info.bio if full_chat_info.bio else "N/A"
-
-                info_text = (
-                    f"|=Username: {username}\n"
-                    f"|-Id: {target_user.id}\n"
-                    f"|-Account creation date: Unknown\n"
-                    f"|-Bot: {target_user.is_bot}\n"
-                    f"|-Scam: {target_user.is_scam}\n"
-                    f"|-Name: {name}\n"
-                    f"|-Deleted: {target_user.is_deleted}\n"
-                    f"|-BIO: {bio}\n"
-                    f"|-Contact: {getattr(target_user, 'is_contact', False)}\n"
-                    f"|-Can pin message: Unknown\n"
-                    f"|-Mutual contact: {getattr(target_user, 'is_mutual_contact', False)}\n"
-                    f"|-Access hash: {getattr(target_user, 'access_hash', 'Hidden')}\n"
-                    f"|-Restricted: {target_user.is_restricted}\n"
-                    f"|-Verified: {target_user.is_verified}\n"
-                    f"|-Phone calls available: Unknown\n"
-                    f"|-Phone calls private: Unknown\n"
-                    f"|-Blocked: Unknown"
-                )
-
-                await progress_msg.edit(
-                    info_text,
-                    link_preview_options=LinkPreviewOptions(is_disabled=True)
-                )
-
-            except Exception as e:
-                await progress_msg.edit(
-                    f"<b>Error:</b> Could not find the specified user.\n<code>{safe_escape(str(e))}</code>",
-                    del_in=LONG_TIMEOUT
-                )
         await progress_msg.edit(
             info_text,
             link_preview_options=LinkPreviewOptions(is_disabled=True)
