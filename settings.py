@@ -1,5 +1,5 @@
 # --- REPOSITORY INFO ---
-REPO_OWNER="R0Xofficial"
+REPO_OWNER="SyntaxSpin"
 REPO_NAME="PlainUB-Extras"
 
 # --- GLOBALL DELETE TIME SETTINGS ---
@@ -17,3 +17,4 @@ FED_BOTS_TO_QUERY = [
     885745757,  # Sophie
     2059887769, # Odin
 ]
+
