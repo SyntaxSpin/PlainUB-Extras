@@ -4,6 +4,7 @@ import shutil
 from pyrogram.errors import UserNotParticipant
 from pyrogram.enums import ChatType, UserStatus, ChatMemberStatus
 from pyrogram.types import Message, User, LinkPreviewOptions, ReplyParameters
+from pyrogram.raw import functions
 
 from app import BOT, bot
 
@@ -174,23 +175,25 @@ async def infop_handler(bot: BOT, message: Message):
             creation_date = "Unknown"
 
         info_text = (
-            f"|=Username: {username}\n"
-            f"|-Id: {user.id}\n"
-            f"|-Account creation date: {creation_date}\n"
-            f"|-Bot: {getattr(user, 'bot', False)}\n"
-            f"|-Scam: {getattr(user, 'scam', False)}\n"
-            f"|-Name: {name}\n"
-            f"|-Deleted: {getattr(user, 'deleted', False)}\n"
-            f"|-BIO: {bio}\n"
-            f"|-Contact: {getattr(user, 'contact', False)}\n"
-            f"|-Can pin message: {getattr(full_user, 'can_pin_message', False)}\n"
-            f"|-Mutual contact: {getattr(user, 'mutual_contact', False)}\n"
-            f"|-Access hash: {getattr(user, 'access_hash', 'Hidden')}\n"
-            f"|-Restricted: {getattr(user, 'restricted', False)}\n"
-            f"|-Verified: {getattr(user, 'verified', False)}\n"
-            f"|-Phone calls available: {getattr(full_user, 'phone_calls_available', False)}\n"
-            f"|-Phone calls private: {getattr(full_user, 'phone_calls_private', False)}\n"
-            f"|-Blocked: {getattr(full_user, 'blocked', False)}"
+            f"Username: {username}\n"
+            f"\t • Id: {user.id}\n"
+            f"\t • Account creation date: {creation_date}\n"
+            f"\t • Premium : {getattr(user, 'premium', False)}\n"
+            f"\t • Bot: {getattr(user, 'bot', False)}\n"
+            f"\t • Scam: {getattr(user, 'scam', False)}\n"
+            f"\t • Name: {name}\n"
+            f"\t • Deleted: {getattr(user, 'deleted', False)}\n"
+            f"\t • BIO: <code>{bio}</code>\n"
+            f"\t • Contact: {getattr(user, 'contact', False)}\n"
+            f"\t • Can pin message: {getattr(full_user, 'can_pin_message', False)}\n"
+            f"\t • Mutual contact: {getattr(user, 'mutual_contact', False)}\n"
+            f"\t • Access hash: {getattr(user, 'access_hash', 'Hidden')}\n"
+            f"\t • Restricted: {getattr(user, 'restricted', False)}\n"
+            f"\t • Verified: {getattr(user, 'verified', False)}\n"
+            f"\t • Phone calls available: {getattr(full_user, 'phone_calls_available', False)}\n"
+            f"\t • Phone calls private: {getattr(full_user, 'phone_calls_private', False)}\n"
+            f"\t • Blocked: {getattr(full_user, 'blocked', False)} \n"
+            f"\t • DM with Premium : {getattr(full_user, 'contact_require_premium', False)}"
         )
 
         await progress_msg.edit(
