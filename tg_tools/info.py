@@ -40,10 +40,10 @@ async def format_user_info(user: User, is_full: bool, message: Message) -> tuple
         if user.dc_id: info_lines.append(f"• <b>DC ID:</b> {user.dc_id}")
         if user.language_code: info_lines.append(f"• <b>Language:</b> {user.language_code}")
 
-        flags = ["Bot 🤖"] if user.is_bot else []
-        if user.is_verified: flags.append("Verified ✅")
-        if user.is_scam: flags.append("Scam ‼️")
-        if user.is_premium: flags.append("Premium ✨")
+        flags = ["Bot"] if user.is_bot else []
+        if user.is_verified: flags.append("Verified")
+        if user.is_scam: flags.append("Scam")
+        if user.is_premium: flags.append("Premium")
         if flags: info_lines.append(f"• <b>Flags:</b> {', '.join(flags)}")
 
         info_lines.append(f"• <b>Last Seen:</b> {get_user_status(user)}")
@@ -176,14 +176,13 @@ async def infop_handler(bot: BOT, message: Message):
 
         info_text = (
             f"Username: {username}\n"
-            f"\t • Id: {user.id}\n"
-            f"\t • Account creation date: {creation_date}\n"
-            f"\t • Premium : {getattr(user, 'premium', False)}\n"
+            f"\t • Id: <code>{user.id}</code> \n"
+            f"\t • Premium: {getattr(user, 'premium', False)}\n"
             f"\t • Bot: {getattr(user, 'bot', False)}\n"
             f"\t • Scam: {getattr(user, 'scam', False)}\n"
             f"\t • Name: {name}\n"
             f"\t • Deleted: {getattr(user, 'deleted', False)}\n"
-            f"\t • BIO: <code>{bio}</code>\n"
+            f"\t • BIO: {bio}\n"
             f"\t • Contact: {getattr(user, 'contact', False)}\n"
             f"\t • Can pin message: {getattr(full_user, 'can_pin_message', False)}\n"
             f"\t • Mutual contact: {getattr(user, 'mutual_contact', False)}\n"
