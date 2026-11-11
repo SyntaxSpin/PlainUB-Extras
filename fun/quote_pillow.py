@@ -186,8 +186,6 @@ async def safe_delete_status(status_msg):
 
 @bot.add_cmd(cmd=["qutimg", "qt", "qimg"])
 async def quote_cmd_handler(bot: BOT, message: Message):
-
-    """ Quoting Someone in full image options -m : Mono , -sf : serif , -ssf : sansserif , -sfi italic , --mds : with material shape -r : quote text from reply \n Latin Only for now \n example command : [reply] , or .qutimg options @username text"""
     text = message.text
     if not text:
         return await message.reply("Provide arguments!")
@@ -195,11 +193,9 @@ async def quote_cmd_handler(bot: BOT, message: Message):
     args = text.split()
     font_flag = "-ssf" 
     use_mds = False
-    use_reply_text = False
     target_username = None
     quote_text_list = []
     
-    # Track if we have captured the primary user target yet
     user_found = False
     
     for arg in args[1:]:
@@ -207,17 +203,15 @@ async def quote_cmd_handler(bot: BOT, message: Message):
             font_flag = arg
         elif arg == "--mds":
             use_mds = True
-        elif arg == "-r":
-            use_reply_text = True
         elif arg.startswith("@") and not user_found:
             target_username = arg
-            user_found = True  # Lock it so any subsequent '@' words are kept as text
+            user_found = True
         else:
             quote_text_list.append(arg)
             
     quote_text = " ".join(quote_text_list)
     
-    if use_reply_text and message.reply_to_message:
+    if not quote_text and message.reply_to_message:
         replied_text = message.reply_to_message.text or message.reply_to_message.caption
         if replied_text:
             quote_text = replied_text
